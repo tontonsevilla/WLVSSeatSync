@@ -13,6 +13,7 @@
   <ItemGroup>
     <ProjectReference Include="..\WLVSSeatSync.Application\WLVSSeatSync.Application.csproj" />
     <ProjectReference Include="..\WLVSSeatSync.Infrastructure\WLVSSeatSync.Infrastructure.csproj" />
+    <ProjectReference Include="..\WLVSSeatSync.ServiceDefaults\WLVSSeatSync.ServiceDefaults.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/WLVSSeatSync.Api/WLVSSeatSync.Api.csproj" />
+    <Project Path="src/WLVSSeatSync.AppHost/WLVSSeatSync.AppHost.csproj" />
     <Project Path="src/WLVSSeatSync.Application/WLVSSeatSync.Application.csproj" />
     <Project Path="src/WLVSSeatSync.Client/WLVSSeatSync.Client.csproj" />
     <Project Path="src/WLVSSeatSync.Dashboard/WLVSSeatSync.Dashboard.csproj" />
@@ -8,6 +9,7 @@
     <Project Path="src/WLVSSeatSync.Gateway/WLVSSeatSync.Gateway.csproj" />
     <Project Path="src/WLVSSeatSync.Infrastructure/WLVSSeatSync.Infrastructure.csproj" />
     <Project Path="src/WLVSSeatSync.Notifications/WLVSSeatSync.Notifications.csproj" />
+    <Project Path="src/WLVSSeatSync.ServiceDefaults/WLVSSeatSync.ServiceDefaults.csproj" />
     <Project Path="src/WLVSSeatSync.Web/WLVSSeatSync.Web.csproj" />
   </Folder>
   <Folder Name="/tests/">

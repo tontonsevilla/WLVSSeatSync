@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\WLVSSeatSync.Client\WLVSSeatSync.Client.csproj" />
+    <ProjectReference Include="..\WLVSSeatSync.ServiceDefaults\WLVSSeatSync.ServiceDefaults.csproj" />
   </ItemGroup>
 
   <PropertyGroup>
