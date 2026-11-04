@@ -6,6 +6,7 @@ gate scanning, and AI-assisted event pages.
 ## Status
 Phase 0 complete: solution structure and local orchestration with Aspire.
 
+Phase 1 complete: domain model with tests, EF Core mapping and seed data.
 
 ![Screenshot](./documentation/images/WLVSSeatSync.ResourcePage.png)
 
