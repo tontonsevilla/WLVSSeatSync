@@ -1,9 +1,12 @@
+using WLVSSeatSync.Infrastructure;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 builder.AddServiceDefaults();
+builder.AddInfrastructure();
 
 var app = builder.Build();
 app.MapDefaultEndpoints();
@@ -12,6 +15,7 @@ app.MapDefaultEndpoints();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    await app.Services.MigrateAndSeedDatabaseAsync();
 }
 
 app.UseHttpsRedirection();

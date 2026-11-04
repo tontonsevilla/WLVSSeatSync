@@ -9,6 +9,9 @@
     <!-- Packages use by Aspire -->
     <PackageVersion Include="Aspire.Hosting.RabbitMQ" Version="13.6.4" />
     <PackageVersion Include="Aspire.Hosting.Redis" Version="13.6.4" />
+    <PackageVersion Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="13.6.4" />
+    <PackageVersion Include="Bogus" Version="35.6.5" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.14" />
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.12" />
     <!-- Packages use by SeviceDefaults project. -->
     <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.10.0" />
