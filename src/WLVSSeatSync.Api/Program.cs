@@ -1,47 +1,102 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
+
+using Scalar.AspNetCore;
+
+using WLVSSeatSync.Api.Auth;
+using WLVSSeatSync.Api.Endpoints;
+using WLVSSeatSync.Api.Errors;
+using WLVSSeatSync.Api.Middleware;
+using WLVSSeatSync.Api.OpenApi;
+using WLVSSeatSync.Application;
+using WLVSSeatSync.Application.Abstractions;
 using WLVSSeatSync.Infrastructure;
+
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
-builder.AddServiceDefaults();
+// ---------- Logging ----------
+builder.Logging.ClearProviders();   // Serilog writes the console from now on
+builder.AddServiceDefaults();       // OpenTelemetry, health checks, resilience
+builder.Services.AddSerilog((services, logger) => logger
+        .ReadFrom.Configuration(builder.Configuration)
+        .ReadFrom.Services(services)
+        .Enrich.FromLogContext()
+        .WriteTo.Console(outputTemplate:
+            "[{Timestamp:HH:mm:ss} {Level:u3}] {CorrelationId} {SourceContext}{NewLine}  {Message:lj}{NewLine}{Exception}"),
+    writeToProviders: true);        // keep feeding OpenTelemetry, so logs still reach the Aspire dashboard
+
+// ---------- Application and infrastructure ----------
 builder.AddInfrastructure();
+builder.Services.AddApplication();
+
+// ---------- JSON and errors ----------
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.RespectNullableAnnotations = true;          // null for a non-nullable property -> 400
+    options.SerializerOptions.RespectRequiredConstructorParameters = true; // missing record property -> 400
+});
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+
+// ---------- Authentication and authorization ----------
+builder.Services.AddOptions<JwtOptions>()
+    .BindConfiguration(JwtOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services.AddSingleton<TokenService>();
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
+builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
+    .Configure<IOptions<JwtOptions>>((bearer, jwtOptions) =>
+    {
+        var jwt = jwtOptions.Value;
+        bearer.MapInboundClaims = false; // keep claim names as written: "sub", "email", "role"
+        bearer.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidIssuer = jwt.Issuer,
+            ValidAudience = jwt.Audience,
+            IssuerSigningKey = jwt.GetSigningKey(),
+            NameClaimType = "name",
+            RoleClaimType = TokenService.RoleClaimType,
+            ClockSkew = TimeSpan.FromSeconds(30),
+        };
+    });
+
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy(Policies.ManageEvents, policy => policy.RequireRole(Roles.Organizer, Roles.Admin))
+    .AddPolicy(Policies.ManageVenues, policy => policy.RequireRole(Roles.Admin));
+
+// ---------- API documentation ----------
+builder.Services.AddOpenApi(options => options.AddDocumentTransformer<BearerSecuritySchemeTransformer>());
 
 var app = builder.Build();
+
+// ---------- Middleware pipeline: order matters ----------
+app.UseMiddleware<CorrelationIdMiddleware>(); // first, so every response and log line has the ID
+app.UseExceptionHandler();                    // catches anything thrown further down
+app.UseStatusCodePages();                     // empty 401/403/404 responses become ProblemDetails
+app.UseSerilogRequestLogging();               // one log line per request, with timing
+app.UseAuthentication();                      // who are you?
+app.UseAuthorization();                       // are you allowed?
+
+// ---------- Endpoints ----------
 app.MapDefaultEndpoints();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.MapScalarApiReference(options => options.WithTitle("WLVS SeatSync API"));
     await app.Services.MigrateAndSeedDatabaseAsync();
 }
 
-app.UseHttpsRedirection();
-
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+app.MapAuthEndpoints();
+app.MapVenueEndpoints();
+app.MapEventEndpoints();
 
 app.Run();
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
+// Lets the integration tests start the app with WebApplicationFactory<Program>.
+public partial class Program { }
