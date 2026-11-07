@@ -1,14 +1,19 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 
+using WLVSSeatSync.Application.Abstractions;
 using WLVSSeatSync.Domain.Abstractions;
 using WLVSSeatSync.Domain.Events;
 using WLVSSeatSync.Domain.Orders;
 using WLVSSeatSync.Domain.Tickets;
 using WLVSSeatSync.Domain.Venues;
+using WLVSSeatSync.Infrastructure.Identity;
 
 namespace WLVSSeatSync.Infrastructure.Persistence
 {
-    public sealed class SeatSyncDbContext(DbContextOptions<SeatSyncDbContext> options) : DbContext(options)
+    public sealed class SeatSyncDbContext(DbContextOptions<SeatSyncDbContext> options)
+    : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>(options), IApplicationDbContext
     {
         public DbSet<Venue> Venues => Set<Venue>();
         public DbSet<Event> Events => Set<Event>();
@@ -17,10 +22,10 @@ namespace WLVSSeatSync.Infrastructure.Persistence
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            // Picks up every IEntityTypeConfiguration class in this project.
+            base.OnModelCreating(modelBuilder); // Identity's tables: AspNetUsers, AspNetRoles, ...
+
             modelBuilder.ApplyConfigurationsFromAssembly(typeof(SeatSyncDbContext).Assembly);
 
-            // The domain creates its own IDs, so EF must never treat them as database-generated.
             var entityTypes = modelBuilder.Model.GetEntityTypes()
                 .Where(t => typeof(Entity).IsAssignableFrom(t.ClrType))
                 .ToList();

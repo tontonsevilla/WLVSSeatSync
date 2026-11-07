@@ -17,5 +17,6 @@ public static class EventErrors
 
     public static Error DuplicateTier(string name) => new("Event.DuplicateTier", $"A tier named '{name}' already exists.");
     public static Error SeatNotFound(Guid id) => new("Event.SeatNotFound", $"Seat {id} is not part of this event.");
-    public static Error SeatUnavailable(Guid id) => new("Event.SeatUnavailable", $"Seat {id} is already held or sold.");
+    public static Error NotFound(Guid id) => Error.NotFound("Event.NotFound", $"Event {id} was not found.");
+    public static Error SeatUnavailable(Guid id) => Error.Conflict("Event.SeatUnavailable", $"Seat {id} is already held or sold.");
 }
