@@ -12,10 +12,14 @@ var rabbitmq = builder.AddRabbitMQ("messaging")
     .WithManagementPlugin();   // RabbitMQ web UI
 
 // Your services
+var payments = builder.AddProject<Projects.WLVSSeatSync_FakePayments>("payments")
+    .WithEnvironment("FailureRate", "1.0");
+
 var api = builder.AddProject<Projects.WLVSSeatSync_Api>("api")
     .WithReference(seatsyncDb).WaitFor(seatsyncDb)
     .WithReference(redis).WaitFor(redis)
-    .WithReference(rabbitmq).WaitFor(rabbitmq);
+    .WithReference(rabbitmq).WaitFor(rabbitmq)
+    .WithReference(payments).WaitFor(payments);
 
 builder.AddProject<Projects.WLVSSeatSync_Notifications>("notifications")
     .WithReference(rabbitmq).WaitFor(rabbitmq);

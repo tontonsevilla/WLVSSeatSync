@@ -20,6 +20,7 @@ public sealed class EventSeat : Entity
     public SeatStatus Status { get; private set; }
     public Guid? OrderId { get; private set; }
     public DateTimeOffset? HeldUntil { get; private set; }
+    public int Version { get; private set; }
 
     // An expired hold counts as available: rule 3.
     public bool IsAvailable(DateTimeOffset now) =>
@@ -34,12 +35,14 @@ public sealed class EventSeat : Entity
         Status = SeatStatus.Held;
         OrderId = orderId;
         HeldUntil = heldUntil;
+        Version++;
     }
 
     internal void MarkSold()
     {
         Status = SeatStatus.Sold;
         HeldUntil = null;
+        Version++;
     }
 
     internal void Release()
@@ -47,5 +50,6 @@ public sealed class EventSeat : Entity
         Status = SeatStatus.Available;
         OrderId = null;
         HeldUntil = null;
+        Version++;
     }
 }

@@ -216,6 +216,10 @@ namespace WLVSSeatSync.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("TicketTierId")
                         .HasColumnType("uuid");
 
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
                     b.HasIndex("SeatId");
@@ -288,6 +292,10 @@ namespace WLVSSeatSync.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 

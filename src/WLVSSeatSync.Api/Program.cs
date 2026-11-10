@@ -1,8 +1,14 @@
+using System.Security.Claims;
+using System.Threading.RateLimiting;
+
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 
 using Scalar.AspNetCore;
+
+using Serilog;
 
 using WLVSSeatSync.Api.Auth;
 using WLVSSeatSync.Api.Endpoints;
@@ -12,8 +18,6 @@ using WLVSSeatSync.Api.OpenApi;
 using WLVSSeatSync.Application;
 using WLVSSeatSync.Application.Abstractions;
 using WLVSSeatSync.Infrastructure;
-
-using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -69,6 +73,22 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy(Policies.ManageEvents, policy => policy.RequireRole(Roles.Organizer, Roles.Admin))
     .AddPolicy(Policies.ManageVenues, policy => policy.RequireRole(Roles.Admin));
 
+// ---------- Rate limiting ----------
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy(OrderEndpoints.RateLimitPolicy, httpContext => RateLimitPartition.GetFixedWindowLimiter(
+        // One bucket per user, or per IP address for anonymous callers.
+        partitionKey: httpContext.User.FindFirstValue(JwtRegisteredClaimNames.Sub)
+            ?? httpContext.Connection.RemoteIpAddress?.ToString()
+            ?? "unknown",
+        factory: _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 5,                     // 5 orders...
+            Window = TimeSpan.FromMinutes(1),    // ...per minute, per user
+        }));
+});
+
 // ---------- API documentation ----------
 builder.Services.AddOpenApi(options => options.AddDocumentTransformer<BearerSecuritySchemeTransformer>());
 
@@ -82,6 +102,9 @@ app.UseSerilogRequestLogging();               // one log line per request, with 
 app.UseAuthentication();                      // who are you?
 app.UseAuthorization();                       // are you allowed?
 
+// ---------- Rate limiting: Add after authentication ----------
+app.UseRateLimiter();
+
 // ---------- Endpoints ----------
 app.MapDefaultEndpoints();
 
@@ -92,9 +115,11 @@ if (app.Environment.IsDevelopment())
     await app.Services.MigrateAndSeedDatabaseAsync();
 }
 
+// ---------- Map dev created endpoints ----------
 app.MapAuthEndpoints();
 app.MapVenueEndpoints();
 app.MapEventEndpoints();
+app.MapOrderEndpoints();
 
 app.Run();
 
