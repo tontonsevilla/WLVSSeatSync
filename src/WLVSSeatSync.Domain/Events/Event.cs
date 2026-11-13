@@ -118,4 +118,11 @@ public sealed class Event : AggregateRoot
         foreach (var seat in expired) seat.Release();
         return expired.Count;
     }
+
+    public int ReleaseHoldsFor(Guid orderId)
+    {
+        var heldSeats = _seats.Where(s => s.OrderId == orderId).ToList();
+        foreach (var seat in heldSeats) seat.Release();
+        return heldSeats.Count;
+    }
 }

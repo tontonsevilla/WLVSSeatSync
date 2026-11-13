@@ -1,4 +1,4 @@
-<Project Sdk="Aspire.AppHost.Sdk/13.6.4">
+<Project Sdk="Aspire.AppHost.Sdk/13.6.5">
 
   <ItemGroup>
     <ProjectReference Include="..\WLVSSeatSync.Api\WLVSSeatSync.Api.csproj" />
@@ -6,6 +6,7 @@
     <ProjectReference Include="..\WLVSSeatSync.Gateway\WLVSSeatSync.Gateway.csproj" />
     <ProjectReference Include="..\WLVSSeatSync.Web\WLVSSeatSync.Web.csproj" />
     <ProjectReference Include="..\WLVSSeatSync.Dashboard\WLVSSeatSync.Dashboard.csproj" />
+    <ProjectReference Include="..\WLVSSeatSync.FakePayments\WLVSSeatSync.FakePayments.csproj" />
   </ItemGroup>
 
   <ItemGroup>

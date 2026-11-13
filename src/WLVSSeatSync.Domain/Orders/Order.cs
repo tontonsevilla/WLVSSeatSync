@@ -18,6 +18,7 @@ public sealed class Order : AggregateRoot
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset ExpiresAt { get; private set; }
     public DateTimeOffset? PaidAt { get; private set; }
+    public int Version { get; set; }
     public IReadOnlyCollection<OrderItem> Items => _items;
 
     public Money Total => _items.Aggregate(
@@ -44,6 +45,18 @@ public sealed class Order : AggregateRoot
         return order;
     }
 
+    public Result Cancel(DateTimeOffset now)
+    {
+        if (Status != OrderStatus.Pending)
+            return OrderErrors.NotPending;
+
+        Status = OrderStatus.Cancelled;
+        Version++;
+        ExpiresAt = now;
+
+        return Result.Success();
+    }
+
     public Result MarkPaid(DateTimeOffset now)
     {
         if (Status != OrderStatus.Pending) return OrderErrors.NotPending;
@@ -52,6 +65,7 @@ public sealed class Order : AggregateRoot
         Status = OrderStatus.Paid;
         PaidAt = now;
         Raise(new OrderPaidDomainEvent(Id, EventId, now));
+        Version++;
         return Result.Success();
     }
 
@@ -61,6 +75,7 @@ public sealed class Order : AggregateRoot
         if (now < ExpiresAt) return OrderErrors.NotYetExpired;
 
         Status = OrderStatus.Expired;
+        Version++;
         return Result.Success();
     }
 }

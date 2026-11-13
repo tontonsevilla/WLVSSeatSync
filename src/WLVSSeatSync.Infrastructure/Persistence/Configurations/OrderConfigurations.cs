@@ -12,6 +12,7 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
     {
         builder.ToTable("Orders");
         builder.Property(o => o.Status).HasConversion<string>().HasMaxLength(20);
+        builder.Property(o => o.Version).IsConcurrencyToken();
         builder.Ignore(o => o.Total); // calculated in C#, not stored
         builder.HasIndex(o => o.CustomerId);
         builder.HasIndex(o => new { o.Status, o.ExpiresAt });

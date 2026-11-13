@@ -1,6 +1,6 @@
 ﻿namespace WLVSSeatSync.Domain.Abstractions;
 
-public enum ErrorType { Failure, Validation, NotFound, Conflict }
+public enum ErrorType { Failure, Validation, NotFound, Conflict, Unavailable }
 
 public sealed record Error(string Code, string Message, ErrorType Type = ErrorType.Failure)
 {

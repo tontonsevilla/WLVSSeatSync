@@ -2,6 +2,7 @@
 
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace WLVSSeatSync.Api.Errors;
 
@@ -23,6 +24,14 @@ internal sealed class GlobalExceptionHandler(IProblemDetailsService problemDetai
             {
                 Status = StatusCodes.Status400BadRequest,
                 Title = "One or more validation errors occurred.",
+            };
+        }
+        else if (exception is DbUpdateConcurrencyException)
+        {
+            problem = new ProblemDetails
+            {
+                Status = StatusCodes.Status409Conflict,
+                Title = "The data changed while you were working on it. Reload and try again.",
             };
         }
         else

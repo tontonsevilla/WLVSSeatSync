@@ -44,6 +44,7 @@ internal sealed class EventSeatConfiguration : IEntityTypeConfiguration<EventSea
     {
         builder.ToTable("EventSeats");
         builder.Property(s => s.Status).HasConversion<string>().HasMaxLength(20);
+        builder.Property(s => s.Version).IsConcurrencyToken();
 
         // The database's own guard: a venue seat appears only once per event.
         builder.HasIndex(s => new { s.EventId, s.SeatId }).IsUnique();

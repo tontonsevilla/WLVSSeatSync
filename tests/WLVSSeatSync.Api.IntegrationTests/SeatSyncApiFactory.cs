@@ -1,7 +1,12 @@
 ﻿using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 using Testcontainers.PostgreSql;
+
+using WLVSSeatSync.Application.Abstractions;
 
 namespace WLVSSeatSync.Api.IntegrationTests
 {
@@ -22,7 +27,17 @@ namespace WLVSSeatSync.Api.IntegrationTests
         }
 
         // Development runs the migrations and seeds the venues, events and demo users.
-        protected override void ConfigureWebHost(IWebHostBuilder builder) => builder.UseEnvironment("Development");
+        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        {
+            builder.UseEnvironment("Development");
+
+            // Runs after Program.cs registered its services, so these replace them.
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<IPaymentGateway>();
+                services.AddSingleton<IPaymentGateway, TestPaymentGateway>();
+            });
+        }
 
         async Task IAsyncLifetime.DisposeAsync()
         {

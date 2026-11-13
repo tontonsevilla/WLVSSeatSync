@@ -12,6 +12,8 @@ Phase 1 complete: domain model with tests, EF Core mapping and seed data.
 
 Phase 2 complete: REST API with JWT auth, validation, ProblemDetails, and integration tests.
 
+Phase 3 complete: seat holds, payments with retries and compensation, pricing rules, race-safe ordering.
+
 ### Try it
 Use this password for all below users `Passw0rd!`.
 

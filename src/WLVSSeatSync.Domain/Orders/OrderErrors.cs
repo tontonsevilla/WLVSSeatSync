@@ -9,4 +9,12 @@ public static class OrderErrors
     public static readonly Error NotPending = new("Order.NotPending", "Only a pending order can be changed.");
     public static readonly Error Expired = new("Order.Expired", "The order expired before payment.");
     public static readonly Error NotYetExpired = new("Order.NotYetExpired", "The order has not expired yet.");
+
+    public static readonly Error SeatsTaken = Error.Conflict("Order.SeatsTaken",
+    "Someone else just took one of these seats. Refresh the seat map and try again.");
+
+    public static readonly Error PaymentConflict = Error.Conflict("Order.PaymentConflict",
+        "This order changed while it was being paid. Check its status before trying again.");
+
+    public static Error NotFound(Guid id) => Error.NotFound("Order.NotFound", $"Order {id} was not found.");
 }
