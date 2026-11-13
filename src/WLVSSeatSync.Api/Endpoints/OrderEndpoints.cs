@@ -1,4 +1,5 @@
-﻿using System.Security.Claims;
+﻿using System.Net;
+using System.Security.Claims;
 
 using MediatR;
 
@@ -7,12 +8,14 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using WLVSSeatSync.Api.Auth;
 using WLVSSeatSync.Api.Errors;
 using WLVSSeatSync.Application.Orders;
+using WLVSSeatSync.Domain.Abstractions;
 
 namespace WLVSSeatSync.Api.Endpoints;
 
 // What the client sends. No customer ID: that always comes from the token.
 public sealed record PlaceOrderRequest(Guid EventId, IReadOnlyList<Guid> EventSeatIds, string? PromoCode = null);
 public sealed record PayOrderRequest(string CardToken);
+public sealed record CancelOrderRequest(Guid orderId);
 
 public static class OrderEndpoints
 {
@@ -24,6 +27,7 @@ public static class OrderEndpoints
 
         group.MapPost("/", PlaceAsync).RequireRateLimiting(RateLimitPolicy);
         group.MapPost("/{id:guid}/pay", PayAsync);
+        group.MapDelete("/{id:guid}", DeleteAsync);
         group.MapGet("/mine", GetMineAsync);
         group.MapGet("/{id:guid}", GetByIdAsync);
 
@@ -46,6 +50,14 @@ public static class OrderEndpoints
     {
         var result = await sender.Send(new PayOrderCommand(user.GetUserId(), id, request.CardToken), cancellationToken);
         return result.IsSuccess ? TypedResults.Ok(result.Value) : result.ToProblem();
+    }
+
+    private static async Task<Results<NoContent, ProblemHttpResult>> DeleteAsync(
+        Guid id, ClaimsPrincipal user, ISender sender, CancellationToken cancellationToken)
+    {
+        var result = await sender.Send(new DeleteOrderCommand(user.GetUserId(), id), cancellationToken);
+
+        return result.IsSuccess ? TypedResults.NoContent() : result.ToProblem();
     }
 
     private static async Task<Ok<IReadOnlyList<OrderSummary>>> GetMineAsync(

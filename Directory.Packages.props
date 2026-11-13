@@ -14,11 +14,11 @@
     <!-- Packages use by Infrastructure project. -->
     <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.14" />
     <!-- Packages use by Notification project. -->
-    <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="13.6.4" />
+    <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="13.6.5" />
     <!-- Packages use by Aspire -->
-    <PackageVersion Include="Aspire.Hosting.RabbitMQ" Version="13.6.4" />
-    <PackageVersion Include="Aspire.Hosting.Redis" Version="13.6.4" />
-    <PackageVersion Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="13.6.4" />
+    <PackageVersion Include="Aspire.Hosting.RabbitMQ" Version="13.6.5" />
+    <PackageVersion Include="Aspire.Hosting.Redis" Version="13.6.5" />
+    <PackageVersion Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="13.6.5" />
     <PackageVersion Include="Bogus" Version="35.6.5" />
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.12" />
     <!-- Packages use by SeviceDefaults project. -->

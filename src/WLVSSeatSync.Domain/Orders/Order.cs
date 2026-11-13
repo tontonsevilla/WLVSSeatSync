@@ -45,6 +45,18 @@ public sealed class Order : AggregateRoot
         return order;
     }
 
+    public Result Cancel(DateTimeOffset now)
+    {
+        if (Status != OrderStatus.Pending)
+            return OrderErrors.NotPending;
+
+        Status = OrderStatus.Cancelled;
+        Version++;
+        ExpiresAt = now;
+
+        return Result.Success();
+    }
+
     public Result MarkPaid(DateTimeOffset now)
     {
         if (Status != OrderStatus.Pending) return OrderErrors.NotPending;

@@ -42,9 +42,9 @@ public sealed class EventEndpointsTests(SeatSyncApiFactory factory)
     [Fact]
     public async Task The_seat_map_shows_every_seat_of_a_new_event_as_available()
     {
-        var page = await _client.GetFromJsonAsync<PagedList<EventSummary>>("/events?pageSize=1");
+        var page = await _client.GetFromJsonAsync<PagedList<EventSummary>>("/events?pageSize=2");
 
-        var seats = await _client.GetFromJsonAsync<List<SeatMapSeat>>($"/events/{page!.Items[0].Id}/seats");
+        var seats = await _client.GetFromJsonAsync<List<SeatMapSeat>>($"/events/{page!.Items[1].Id}/seats");
 
         seats.ShouldNotBeNull();
         seats.ShouldNotBeEmpty();
