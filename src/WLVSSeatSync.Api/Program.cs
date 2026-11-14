@@ -15,6 +15,7 @@ using WLVSSeatSync.Api.Endpoints;
 using WLVSSeatSync.Api.Errors;
 using WLVSSeatSync.Api.Middleware;
 using WLVSSeatSync.Api.OpenApi;
+using WLVSSeatSync.Api.Realtime;
 using WLVSSeatSync.Application;
 using WLVSSeatSync.Application.Abstractions;
 using WLVSSeatSync.Infrastructure;
@@ -89,6 +90,23 @@ builder.Services.AddRateLimiter(options =>
         }));
 });
 
+// ---------- Real-time ----------
+// The Redis backplane: with several API instances, a message sent by one reaches
+// browsers connected to any of them.
+builder.Services.AddSignalR()
+    .AddStackExchangeRedis(builder.Configuration.GetConnectionString("redis")
+        ?? throw new InvalidOperationException("Connection string 'redis' is missing."));
+builder.Services.AddSingleton<ViewerCounter>();
+builder.Services.AddSingleton<ISeatMapNotifier, SignalRSeatMapNotifier>();
+
+// ---------- CORS: the website's JavaScript connects to the hub on the API's address ----------
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy
+    .WithOrigins(allowedOrigins)
+    .AllowAnyHeader()
+    .AllowAnyMethod()
+    .AllowCredentials()));
+
 // ---------- API documentation ----------
 builder.Services.AddOpenApi(options => options.AddDocumentTransformer<BearerSecuritySchemeTransformer>());
 
@@ -99,6 +117,7 @@ app.UseMiddleware<CorrelationIdMiddleware>(); // first, so every response and lo
 app.UseExceptionHandler();                    // catches anything thrown further down
 app.UseStatusCodePages();                     // empty 401/403/404 responses become ProblemDetails
 app.UseSerilogRequestLogging();               // one log line per request, with timing
+app.UseCors();                                 // CORS headers for the hub and API
 app.UseAuthentication();                      // who are you?
 app.UseAuthorization();                       // are you allowed?
 
@@ -120,6 +139,7 @@ app.MapAuthEndpoints();
 app.MapVenueEndpoints();
 app.MapEventEndpoints();
 app.MapOrderEndpoints();
+app.MapHub<SeatMapHub>("/hubs/seat-map");
 
 app.Run();
 

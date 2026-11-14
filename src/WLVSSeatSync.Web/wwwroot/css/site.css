@@ -29,3 +29,64 @@ body {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
   text-align: start;
 }
+
+.seat-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 4px;
+}
+
+.row-label {
+    width: 1.5rem;
+    font-weight: 600;
+}
+
+/* The checkbox stays in the page for keyboards and screen readers; the label is what you see. */
+.seat-input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.seat {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border: 1px solid #198754;
+    border-radius: 4px;
+    font-size: .75rem;
+    cursor: pointer;
+    user-select: none;
+}
+
+.seat-input:checked + .seat {
+    background: #198754;
+    color: #fff;
+}
+
+.seat-input:disabled + .seat {
+    background: #e9ecef;
+    border-color: #ced4da;
+    color: #adb5bd;
+    cursor: not-allowed;
+    text-decoration: line-through;
+}
+
+.seat-input:focus-visible + .seat {
+    outline: 2px solid #0d6efd;
+    outline-offset: 2px;
+}
+
+.seat.flash {
+    animation: seat-flash 1s ease-out;
+}
+
+@keyframes seat-flash {
+    from {
+        background: #ffc107;
+    }
+}

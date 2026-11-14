@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 using Testcontainers.PostgreSql;
+using Testcontainers.Redis;
 
 using WLVSSeatSync.Application.Abstractions;
 
@@ -16,13 +17,17 @@ namespace WLVSSeatSync.Api.IntegrationTests
 
         private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:17-alpine").Build();
 
+        private readonly RedisContainer _redis = new RedisBuilder("redis:7.4-alpine").Build();
+
         public async Task InitializeAsync()
         {
-            await _postgres.StartAsync();
+            // Start both at once: each takes a few seconds, so this halves the wait.
+            await Task.WhenAll(_postgres.StartAsync(), _redis.StartAsync());
 
             // Environment variables are read by WebApplication.CreateBuilder before any of
             // Program.cs runs, so AddNpgsqlDbContext sees the test database straight away.
             Environment.SetEnvironmentVariable("ConnectionStrings__seatsyncdb", _postgres.GetConnectionString());
+            Environment.SetEnvironmentVariable("ConnectionStrings__redis", _redis.GetConnectionString());
             Environment.SetEnvironmentVariable("Jwt__SigningKey", TestSigningKey);
         }
 
@@ -42,7 +47,7 @@ namespace WLVSSeatSync.Api.IntegrationTests
         async Task IAsyncLifetime.DisposeAsync()
         {
             await DisposeAsync();            // stop the API first
-            await _postgres.DisposeAsync();  // then remove the container
+            await Task.WhenAll(_postgres.DisposeAsync().AsTask(), _redis.DisposeAsync().AsTask());  // then remove the container
         }
     }
 }

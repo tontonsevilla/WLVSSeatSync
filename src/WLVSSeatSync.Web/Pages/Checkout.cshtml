@@ -1,0 +1,88 @@
+﻿@page "{orderId:guid}"
+@model WLVSSeatSync.Web.Pages.CheckoutModel
+@{
+    ViewData["Title"] = "Checkout";
+}
+
+<h1 class="h3">Checkout</h1>
+<p class="text-body-secondary">@Model.Order.EventTitle</p>
+
+@if (Model.Order.Status != "Pending")
+{
+    <div class="alert alert-info">
+        This order is @Model.Order.Status.ToLowerInvariant(). <a asp-page="/Account/Tickets">See your tickets</a>
+    </div>
+}
+else
+{
+    <p class="fs-5">
+        Your seats are held for
+        <strong id="countdown" data-expires="@Model.Order.ExpiresAt.ToString("O")">10:00</strong>
+    </p>
+
+    <table class="table">
+        <thead><tr><th>Seat</th><th class="text-end">Price</th></tr></thead>
+        <tbody>
+            @foreach (var seat in Model.Order.Seats)
+            {
+                <tr>
+                    <td>@seat.Section, row @seat.Row, seat @seat.Number</td>
+                    <td class="text-end">@Display.Money(Model.Order.Currency, seat.Price)</td>
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            <tr><th>Total</th><th class="text-end">@Display.Money(Model.Order.Currency, Model.Order.Total)</th></tr>
+        </tfoot>
+    </table>
+
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger" role="alert">@Model.ErrorMessage</div>
+    }
+
+    <form method="post">
+        <fieldset class="mb-3">
+            <legend class="h6">Test card</legend>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" asp-for="CardToken" value="tok_visa" id="card-ok" />
+                <label class="form-check-label" for="card-ok">A card that pays</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" asp-for="CardToken" value="tok_declined" id="card-declined" />
+                <label class="form-check-label" for="card-declined">A card that is declined</label>
+            </div>
+        </fieldset>
+        <button id="pay-button" type="submit" class="btn btn-success btn-lg">
+            Pay @Display.Money(Model.Order.Currency, Model.Order.Total)
+        </button>
+    </form>
+}
+
+@section Scripts {
+    <script>
+        (() => {
+            const countdown = document.getElementById("countdown");
+            if (!countdown) return;
+
+            const expiresAt = new Date(countdown.dataset.expires);
+            const payButton = document.getElementById("pay-button");
+
+            const tick = () => {
+                const remaining = Math.max(0, expiresAt - new Date());
+                const minutes = Math.floor(remaining / 60000);
+                const seconds = Math.floor((remaining % 60000) / 1000);
+                countdown.textContent = `${minutes}:${String(seconds).padStart(2, "0")}`;
+
+                if (remaining === 0) {
+                    countdown.textContent = "expired";
+                    payButton.disabled = true;
+                    clearInterval(timer);
+                }
+            };
+
+            const timer = setInterval(tick, 1000);
+            tick();
+        })();
+    </script>
+}
