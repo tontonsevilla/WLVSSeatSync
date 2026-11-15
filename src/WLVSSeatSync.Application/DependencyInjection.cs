@@ -3,6 +3,7 @@
 using Microsoft.Extensions.DependencyInjection;
 
 using WLVSSeatSync.Application.Behaviors;
+using WLVSSeatSync.Application.Common;
 
 namespace WLVSSeatSync.Application;
 
@@ -19,6 +20,9 @@ public static class DependencyInjection
         });
 
         services.AddValidatorsFromAssembly(assembly, includeInternalTypes: true);
+
+        services.AddScoped<SeatMapUpdates>();
+
         return services;
     }
 }

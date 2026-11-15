@@ -5,6 +5,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 using WLVSSeatSync.Application.Abstractions;
+using WLVSSeatSync.Application.Common;
 using WLVSSeatSync.Domain.Abstractions;
 using WLVSSeatSync.Domain.Events;
 using WLVSSeatSync.Domain.Orders;
@@ -34,7 +35,10 @@ internal sealed class PlaceOrderCommandValidator : AbstractValidator<PlaceOrderC
     }
 }
 
-internal sealed class PlaceOrderCommandHandler(IApplicationDbContext db, PriceCalculator pricing, TimeProvider clock)
+internal sealed class PlaceOrderCommandHandler(IApplicationDbContext db, 
+    PriceCalculator pricing, 
+    TimeProvider clock,
+    SeatMapUpdates seatMapUpdates)
     : IRequestHandler<PlaceOrderCommand, Result<PlacedOrder>>
 {
     public async Task<Result<PlacedOrder>> Handle(PlaceOrderCommand request, CancellationToken cancellationToken)
@@ -86,6 +90,8 @@ internal sealed class PlaceOrderCommandHandler(IApplicationDbContext db, PriceCa
             // Another buyer changed one of these seats between our read and our write.
             return OrderErrors.SeatsTaken;
         }
+
+        await seatMapUpdates.PublishAsync(ev.Id, seatIds, isAvailable: false);
 
         return new PlacedOrder(order.Id, order.Total.Amount, order.Total.Currency, order.ExpiresAt, appliedDiscount);
     }

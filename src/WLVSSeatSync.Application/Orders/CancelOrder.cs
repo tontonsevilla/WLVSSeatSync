@@ -5,6 +5,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 using WLVSSeatSync.Application.Abstractions;
+using WLVSSeatSync.Application.Common;
 using WLVSSeatSync.Domain.Abstractions;
 using WLVSSeatSync.Domain.Events;
 using WLVSSeatSync.Domain.Orders;
@@ -13,7 +14,9 @@ namespace WLVSSeatSync.Application.Orders;
 
 public sealed record DeleteOrderCommand(Guid CustomerId, Guid OrderId) : IRequest<Result>;
 
-internal sealed class DeleteOrderCommandHandler(IApplicationDbContext db, TimeProvider clock)
+internal sealed class DeleteOrderCommandHandler(IApplicationDbContext db, 
+    TimeProvider clock,
+    SeatMapUpdates seatMapUpdates)
     : IRequestHandler<DeleteOrderCommand, Result>
 {
     public async Task<Result> Handle(DeleteOrderCommand request, CancellationToken cancellationToken)
@@ -44,6 +47,11 @@ internal sealed class DeleteOrderCommandHandler(IApplicationDbContext db, TimePr
         }
 
         await db.SaveChangesAsync(cancellationToken);
+
+        await seatMapUpdates.PublishAsync(order.EventId,
+            order.Items.Select(i => i.EventSeatId).ToArray(),
+            isAvailable: true);
+
         return Result.Success();
     }
 }

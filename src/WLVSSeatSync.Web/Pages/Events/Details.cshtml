@@ -1,0 +1,66 @@
+﻿@page "{id:guid}"
+@model WLVSSeatSync.Web.Pages.Events.DetailsModel
+@{
+    ViewData["Title"] = Model.Event.Title;
+    var tiers = Model.Event.TicketTiers.ToDictionary(t => t.Id);
+    var loggedIn = User.Identity?.IsAuthenticated == true;
+}
+
+<h1 class="h3">@Model.Event.Title</h1>
+<p class="text-body-secondary mb-1">@Display.When(Model.Event.StartsAt) · @Model.Event.Venue.Name, @Model.Event.Venue.City</p>
+<p id="viewer-count" class="small text-body-secondary" aria-live="polite"></p>
+<p>@Model.Event.Description</p>
+
+<h2 class="h5">Tickets</h2>
+<ul class="list-unstyled mb-4">
+    @foreach (var tier in Model.Event.TicketTiers)
+    {
+        <li><strong>@tier.Name</strong>: @Display.Money(tier.Currency, tier.Price) · @tier.AvailableSeats of @tier.TotalSeats left</li>
+    }
+</ul>
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert alert-danger" role="alert">@Model.ErrorMessage</div>
+}
+<div id="live-notice" class="alert alert-warning d-none" role="status"></div>
+
+<form method="post" id="seat-map" data-event-id="@Model.Event.Id" data-hub-url="@Model.HubUrl">
+    <p class="small text-body-secondary">Stage this way ↑ · Click seats to select them. Grey seats are taken.</p>
+
+    @foreach (var sectionSeats in Model.Seats.GroupBy(s => s.Section))
+    {
+        <h3 class="h6 mt-3">@sectionSeats.Key</h3>
+        @foreach (var rowSeats in sectionSeats.GroupBy(s => s.Row))
+        {
+            <div class="seat-row">
+                <span class="row-label">@rowSeats.Key</span>
+                @foreach (var seat in rowSeats)
+                {
+                    var tier = tiers[seat.TicketTierId];
+                    <input type="checkbox" class="seat-input" name="SelectedSeatIds" value="@seat.EventSeatId"
+                           id="seat-@seat.EventSeatId" disabled="@(!seat.IsAvailable)" />
+                    <label class="seat" for="seat-@seat.EventSeatId"
+                           title="@sectionSeats.Key, row @rowSeats.Key, seat @seat.Number: @Display.Money(tier.Currency, tier.Price)">@seat.Number</label>
+                }
+            </div>
+        }
+    }
+
+    <div class="row g-2 mt-3 align-items-end">
+        <div class="col-sm-4">
+            <label asp-for="PromoCode" class="form-label">Promo code (optional)</label>
+            <input asp-for="PromoCode" class="form-control" />
+        </div>
+        <div class="col-sm-5 d-grid">
+            <button type="submit" class="btn btn-primary">
+                @(loggedIn ? "Hold seats for 10 minutes" : "Log in to hold seats")
+            </button>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.7/signalr.min.js"></script>
+    <script src="~/js/seat-map.js" asp-append-version="true"></script>
+}

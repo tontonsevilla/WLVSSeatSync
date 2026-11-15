@@ -3,6 +3,7 @@
 using MediatR;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Hybrid;
 
 using WLVSSeatSync.Application.Abstractions;
 using WLVSSeatSync.Application.Common;
@@ -27,10 +28,19 @@ internal sealed class SearchEventsQueryValidator : AbstractValidator<SearchEvent
     }
 }
 
-internal sealed class SearchEventsQueryHandler(IApplicationDbContext db, TimeProvider clock)
+internal sealed class SearchEventsQueryHandler(IApplicationDbContext db, 
+    TimeProvider clock,
+    HybridCache cache)
     : IRequestHandler<SearchEventsQuery, PagedList<EventSummary>>
 {
-    public async Task<PagedList<EventSummary>> Handle(SearchEventsQuery request, CancellationToken cancellationToken)
+    public async Task<PagedList<EventSummary>> Handle(SearchEventsQuery request, CancellationToken cancellationToken) =>
+        await cache.GetOrCreateAsync(
+            CacheKeys.Search(request.Search, request.From, request.Page, request.PageSize),
+            async ct => await QueryAsync(request, ct),
+            tags: [CacheKeys.AllEvents],
+            cancellationToken: cancellationToken);
+
+    private async Task<PagedList<EventSummary>> QueryAsync(SearchEventsQuery request, CancellationToken cancellationToken)
     {
         var from = (request.From ?? clock.GetUtcNow()).ToUniversalTime();
 

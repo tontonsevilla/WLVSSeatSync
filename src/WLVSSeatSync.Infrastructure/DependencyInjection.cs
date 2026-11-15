@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -37,8 +38,8 @@ public static class DependencyInjection
         // Payments: an adapter over the provider's HTTP API, with a resilience pipeline tuned for it.
         builder.Services.AddScoped<IPaymentGateway, FakePaymentGateway>();
         builder.Services
-            .AddRefitGeneratedClient<IFakePaymentsApi>()
-            //.AddRefitClient<IFakePaymentsApi>()
+            //.AddRefitGeneratedClient<IFakePaymentsApi>()
+            .AddRefitClient<IFakePaymentsApi>()
             .ConfigureHttpClient(client => client.BaseAddress = new Uri("https+http://payments"))
             .AddResilienceHandler("payments", pipeline =>
             {
@@ -72,6 +73,17 @@ public static class DependencyInjection
             builder.Configuration.GetSection("Pricing:PromoCodes").Get<Dictionary<string, decimal>>()
                 ?? new Dictionary<string, decimal>()));
         builder.Services.AddSingleton<PriceCalculator>();
+
+        // Caching: a small copy in memory (L1) in front of a shared copy in Redis (L2).
+        builder.AddRedisDistributedCache("redis");          // HybridCache picks this up as L2
+        builder.Services.AddHybridCache(options =>
+        {
+            options.DefaultEntryOptions = new HybridCacheEntryOptions
+            {
+                Expiration = TimeSpan.FromSeconds(60),       // how long Redis keeps it
+                LocalCacheExpiration = TimeSpan.FromSeconds(10), // how long each API's memory keeps it
+            };
+        });
 
         return builder;
     }

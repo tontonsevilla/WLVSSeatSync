@@ -1,0 +1,43 @@
+﻿@page
+@model WLVSSeatSync.Web.Pages.Account.TicketsModel
+@{
+    ViewData["Title"] = "My tickets";
+}
+
+<h1 class="h3 mb-3">My tickets</h1>
+
+@if (Model.Orders.Count == 0)
+{
+    <p>No orders yet. <a asp-page="/Index">Find an event</a></p>
+}
+
+@foreach (var order in Model.Orders)
+{
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="d-flex justify-content-between flex-wrap gap-2">
+                <div>
+                    <h2 class="h5 mb-1">@order.EventTitle</h2>
+                    <p class="text-body-secondary mb-0">@Display.When(order.EventStartsAt) · @order.SeatCount seat(s) · @Display.Money(order.Currency, order.Total)</p>
+                </div>
+                <span class="badge align-self-start @(order.Status == "Paid" ? "text-bg-success" : "text-bg-secondary")">@order.Status</span>
+            </div>
+
+            @if (order.Status == "Pending")
+            {
+                <a class="btn btn-sm btn-primary mt-2" asp-page="/Checkout" asp-route-orderId="@order.Id">Finish paying</a>
+            }
+
+            @if (Model.PaidOrders.TryGetValue(order.Id, out var details))
+            {
+                <ul class="list-unstyled mt-3 mb-0">
+                    @foreach (var seat in details.Seats)
+                    {
+                        var ticket = details.Tickets.FirstOrDefault(t => t.EventSeatId == seat.EventSeatId);
+                        <li>@seat.Section, row @seat.Row, seat @seat.Number: <code>@ticket?.Code</code></li>
+                    }
+                </ul>
+            }
+        </div>
+    </div>
+}

@@ -1,10 +1,49 @@
 ﻿@page
 @model IndexModel
 @{
-    ViewData["Title"] = "Home page";
+    ViewData["Title"] = "Upcoming events";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<h1 class="h3 mb-3">Upcoming events</h1>
+
+<form method="get" class="row g-2 mb-4" role="search">
+    <div class="col-sm-9">
+        <input class="form-control" name="search" value="@Model.Search"
+               placeholder="Search concerts, summits, food fairs…" aria-label="Search events" />
+    </div>
+    <div class="col-sm-3 d-grid">
+        <button type="submit" class="btn btn-primary">Search</button>
+    </div>
+</form>
+
+@if (Model.Results.Items.Count == 0)
+{
+    <p>No upcoming events match “@Model.Search”.</p>
+}
+
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
+    @foreach (var ev in Model.Results.Items)
+    {
+        <div class="col">
+            <a class="card h-100 text-decoration-none text-reset" asp-page="/Events/Details" asp-route-id="@ev.Id">
+                <div class="card-body">
+                    <h2 class="h5 card-title">@ev.Title</h2>
+                    <p class="card-text text-body-secondary mb-1">@Display.When(ev.StartsAt)</p>
+                    <p class="card-text mb-2">@ev.VenueName, @ev.City</p>
+                    <p class="card-text fw-semibold">From @Display.Money(ev.Currency, ev.LowestPrice)</p>
+                </div>
+            </a>
+        </div>
+    }
 </div>
+
+<nav class="mt-4 d-flex gap-2" aria-label="Pages">
+    @if (Model.Results.Page > 1)
+    {
+        <a class="btn btn-outline-secondary" asp-route-search="@Model.Search" asp-route-p="@(Model.Results.Page - 1)">Previous</a>
+    }
+    @if (Model.Results.HasNextPage)
+    {
+        <a class="btn btn-outline-secondary" asp-route-search="@Model.Search" asp-route-p="@(Model.Results.Page + 1)">Next</a>
+    }
+</nav>

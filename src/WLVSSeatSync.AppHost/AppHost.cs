@@ -13,7 +13,7 @@ var rabbitmq = builder.AddRabbitMQ("messaging")
 
 // Your services
 var payments = builder.AddProject<Projects.WLVSSeatSync_FakePayments>("payments")
-    .WithEnvironment("FailureRate", "1.0");
+    .WithEnvironment("FailureRate", "0.2");
 
 var api = builder.AddProject<Projects.WLVSSeatSync_Api>("api")
     .WithReference(seatsyncDb).WaitFor(seatsyncDb)
@@ -28,9 +28,13 @@ builder.AddProject<Projects.WLVSSeatSync_Gateway>("gateway")
     .WithReference(api)
     .WithExternalHttpEndpoints();
 
-builder.AddProject<Projects.WLVSSeatSync_Web>("web")
+var web = builder.AddProject<Projects.WLVSSeatSync_Web>("web")
     .WithReference(api)
+    .WithReference(redis).WaitFor(redis)
     .WithExternalHttpEndpoints();
+
+// The browser opens a SignalR connection to the API, so the API must allow the website's origin.
+api.WithEnvironment("Cors__AllowedOrigins__0", web.GetEndpoint("https"));
 
 builder.AddProject<Projects.WLVSSeatSync_Dashboard>("dashboard")
     .WithReference(api)

@@ -3,8 +3,10 @@
 using MediatR;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Hybrid;
 
 using WLVSSeatSync.Application.Abstractions;
+using WLVSSeatSync.Application.Common;
 using WLVSSeatSync.Domain.Abstractions;
 using WLVSSeatSync.Domain.Events;
 
@@ -17,7 +19,8 @@ internal sealed class PublishEventCommandValidator : AbstractValidator<PublishEv
     public PublishEventCommandValidator() => RuleFor(c => c.EventId).NotEmpty();
 }
 
-internal sealed class PublishEventCommandHandler(IApplicationDbContext db)
+internal sealed class PublishEventCommandHandler(IApplicationDbContext db,
+    HybridCache cache)
     : IRequestHandler<PublishEventCommand, Result>
 {
     public async Task<Result> Handle(PublishEventCommand request, CancellationToken cancellationToken)
@@ -34,6 +37,9 @@ internal sealed class PublishEventCommandHandler(IApplicationDbContext db)
             return result;
 
         await db.SaveChangesAsync(cancellationToken);
+
+        await cache.RemoveByTagAsync([CacheKeys.AllEvents, CacheKeys.Event(request.EventId)], cancellationToken);
+
         return Result.Success();
     }
 }
