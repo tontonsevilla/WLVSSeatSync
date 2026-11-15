@@ -14,11 +14,14 @@ Phase 2 complete: REST API with JWT auth, validation, ProblemDetails, and integr
 
 Phase 3 complete: seat holds, payments with retries and compensation, pricing rules, race-safe ordering.
 
+Phase 4 complete: public website with live seat map, checkout, caching and Google sign-in.
+> **Note:** Google sign-in is optional.
+
 ### Try it
 Use this password for all below users `Passw0rd!`.
 
 |Name|Username|Role|
-|----|--------|--------|----|
+|----|--------|--------|
 |Ana Admin|admin@seatsync.dev|Admin|
 |Oscar Organizer|organizer@seatsync.dev|Organizer|
 |Sam Staff|staff@seatsync.dev|Staff|
