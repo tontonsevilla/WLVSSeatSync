@@ -40,4 +40,7 @@ public interface ISeatSyncApi
 
     [Get("/orders/{id}")]
     Task<IApiResponse<OrderDetails>> GetOrderAsync(Guid id, CancellationToken cancellationToken = default);
+
+    [Delete("/orders/{id}")] 
+    Task<IApiResponse> CancelOrderAsync(Guid id, CancellationToken cancellationToken = default);
 }

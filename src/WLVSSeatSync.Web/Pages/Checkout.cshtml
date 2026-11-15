@@ -56,6 +56,9 @@ else
         <button id="pay-button" type="submit" class="btn btn-success btn-lg">
             Pay @Display.Money(Model.Order.Currency, Model.Order.Total)
         </button>
+        <button id="cancel-button" type="submit" class="btn btn-danger btn-lg" asp-page-handler="Cancel">
+            Release my seats
+        </button>
     </form>
 }
 

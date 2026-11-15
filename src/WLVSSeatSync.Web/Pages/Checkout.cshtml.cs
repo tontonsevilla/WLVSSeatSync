@@ -30,6 +30,26 @@ public sealed class CheckoutModel(ISeatSyncApi api) : PageModel
         return await LoadAsync(orderId, cancellationToken) ? Page() : NotFound();
     }
 
+    public async Task<IActionResult> OnPostCancelAsync(Guid orderId, CancellationToken cancellationToken)
+    {
+        var responseGetOrder = await api.GetOrderAsync(orderId, cancellationToken);
+
+        if (!responseGetOrder.IsSuccessful)
+        {
+            ErrorMessage = ApiErrors.Describe(responseGetOrder.Error as Refit.ApiException); // e.g. "The order was not found."
+            return await LoadAsync(orderId, cancellationToken) ? Page() : NotFound();
+        }
+
+        var response = await api.CancelOrderAsync(orderId, cancellationToken);
+        if (response.IsSuccessful)
+        {
+            TempData["Message"] = "Your seats have been released.";
+            return Redirect($"/Events/Details/{responseGetOrder.Content?.EventId}");
+        }
+        ErrorMessage = ApiErrors.Describe(response.Error as Refit.ApiException); // e.g. "The order was not found."
+        return await LoadAsync(orderId, cancellationToken) ? Page() : NotFound();
+    }
+
     private async Task<bool> LoadAsync(Guid orderId, CancellationToken cancellationToken)
     {
         var response = await api.GetOrderAsync(orderId, cancellationToken);
