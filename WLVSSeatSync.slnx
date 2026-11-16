@@ -4,6 +4,7 @@
     <Project Path="src/WLVSSeatSync.AppHost/WLVSSeatSync.AppHost.csproj" />
     <Project Path="src/WLVSSeatSync.Application/WLVSSeatSync.Application.csproj" />
     <Project Path="src/WLVSSeatSync.Client/WLVSSeatSync.Client.csproj" />
+    <Project Path="src/WLVSSeatSync.Contracts/WLVSSeatSync.Contracts.csproj" />
     <Project Path="src/WLVSSeatSync.Dashboard/WLVSSeatSync.Dashboard.csproj" />
     <Project Path="src/WLVSSeatSync.Domain/WLVSSeatSync.Domain.csproj" />
     <Project Path="src/WLVSSeatSync.FakePayments/WLVSSeatSync.FakePayments.csproj" />

@@ -1,9 +1,13 @@
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
 
-var app = builder.Build();
-app.MapDefaultEndpoints();
+builder.Services.AddReverseProxy()
+    .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"))
+    .AddServiceDiscoveryDestinationResolver(); // turns "https+http://api" into the real address
 
-app.MapGet("/", () => "Hello World!");
+var app = builder.Build();
+
+app.MapDefaultEndpoints();
+app.MapReverseProxy();
 
 app.Run();

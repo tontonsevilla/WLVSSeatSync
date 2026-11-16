@@ -1,6 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <ProjectReference Include="..\WLVSSeatSync.Contracts\WLVSSeatSync.Contracts.csproj" />
     <ProjectReference Include="..\WLVSSeatSync.Domain\WLVSSeatSync.Domain.csproj" />
   </ItemGroup>
 

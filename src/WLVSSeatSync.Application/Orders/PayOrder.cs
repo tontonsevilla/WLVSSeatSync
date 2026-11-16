@@ -27,14 +27,15 @@ internal sealed class PayOrderCommandValidator : AbstractValidator<PayOrderComma
 
 internal sealed class PayOrderCommandHandler(IApplicationDbContext db, 
     IPaymentGateway payments, // Actual payment gateway
-    TimeProvider clock)
+    TimeProvider clock,
+    OrderPaidMessageFactory orderPaidMessages,
+    IEventPublisher events)
     : IRequestHandler<PayOrderCommand, Result<PaidOrder>>
 {
     public async Task<Result<PaidOrder>> Handle(PayOrderCommand request, CancellationToken cancellationToken)
     {
         var now = clock.GetUtcNow();
 
-        // Someone else's order is "not found", never "forbidden": don't confirm it exists.
         var order = await db.Orders
             .Include(o => o.Items)
             .FirstOrDefaultAsync(o => o.Id == request.OrderId && o.CustomerId == request.CustomerId, cancellationToken);
@@ -47,7 +48,7 @@ internal sealed class PayOrderCommandHandler(IApplicationDbContext db,
             .Include(e => e.Seats.Where(s => seatIds.Contains(s.Id)))
             .FirstAsync(e => e.Id == order.EventId, cancellationToken);
 
-        // 1. Make every domain change in memory. If any rule says no, nobody has been charged.
+        // 1. Domain changes in memory. If any rule says no, nobody has been charged.
         var paid = order.MarkPaid(now);
         if (paid.IsFailure)
             return paid.Error;
@@ -56,14 +57,19 @@ internal sealed class PayOrderCommandHandler(IApplicationDbContext db,
         if (confirmed.IsFailure)
             return confirmed.Error;
 
+        // 1b. NEW: issue the tickets and build the message, still in memory and before charging,
+        // so a failure here (say, a missing email address) can't leave a charged card behind.
+        var tickets = seatIds.Select(seatId => Ticket.Issue(order.Id, order.EventId, seatId, now)).ToList();
+        var orderPaid = await orderPaidMessages.CreateAsync(order, ev, tickets, now, cancellationToken);
+
         // 2. Charge. The order ID is the idempotency key, so retries can't charge twice.
         var receipt = await payments.ChargeAsync(order.Id, order.Total, request.CardToken, cancellationToken);
         if (receipt.IsFailure)
             return receipt.Error;
 
-        // 3. Issue tickets and save the order, the seats and the tickets in one transaction.
-        var tickets = seatIds.Select(seatId => Ticket.Issue(order.Id, order.EventId, seatId, now)).ToList();
+        // 3. NEW: save the order, seats, tickets AND the OrderPaid message in ONE transaction.
         db.Tickets.AddRange(tickets);
+        await events.PublishAsync(orderPaid, cancellationToken);
 
         try
         {
@@ -71,8 +77,8 @@ internal sealed class PayOrderCommandHandler(IApplicationDbContext db,
         }
         catch (DbUpdateConcurrencyException)
         {
-            // 4. Compensate. A parallel request for this same order may have won: it used the same
-            // idempotency key, so it holds the same charge, and refunding would take its money back.
+            // 4. Compensate, as in Phase 3. The outbox row was part of the failed transaction,
+            // so no OrderPaid is ever sent for this attempt.
             var paidElsewhere = await db.Orders
                 .AsNoTracking()
                 .AnyAsync(o => o.Id == order.Id && o.Status == OrderStatus.Paid, CancellationToken.None);

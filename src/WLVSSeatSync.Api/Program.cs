@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using System.Threading.RateLimiting;
 
+using Hangfire;
+
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
@@ -19,6 +21,7 @@ using WLVSSeatSync.Api.Realtime;
 using WLVSSeatSync.Application;
 using WLVSSeatSync.Application.Abstractions;
 using WLVSSeatSync.Infrastructure;
+using WLVSSeatSync.Infrastructure.BackgroundJobs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -112,6 +115,9 @@ builder.Services.AddOpenApi(options => options.AddDocumentTransformer<BearerSecu
 
 var app = builder.Build();
 
+// Recurring jobs are stored in PostgreSQL. AddOrUpdate on every start keeps them in sync with the code.
+SeatSyncJobs.Schedule(app.Services.GetRequiredService<IRecurringJobManager>());
+
 // ---------- Middleware pipeline: order matters ----------
 app.UseMiddleware<CorrelationIdMiddleware>(); // first, so every response and log line has the ID
 app.UseExceptionHandler();                    // catches anything thrown further down
@@ -132,6 +138,7 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
     app.MapScalarApiReference(options => options.WithTitle("WLVS SeatSync API"));
     await app.Services.MigrateAndSeedDatabaseAsync();
+    app.MapHangfireDashboard("/jobs"); // allows only requests from this machine by default
 }
 
 // ---------- Map dev created endpoints ----------
