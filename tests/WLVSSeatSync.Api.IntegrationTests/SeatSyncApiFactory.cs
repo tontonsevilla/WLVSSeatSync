@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Hosting;
+﻿using MassTransit;
+
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
@@ -41,6 +43,7 @@ namespace WLVSSeatSync.Api.IntegrationTests
             {
                 services.RemoveAll<IPaymentGateway>();
                 services.AddSingleton<IPaymentGateway, TestPaymentGateway>();
+                services.AddMassTransitTestHarness(); // in-memory bus that records every message
             });
         }
 

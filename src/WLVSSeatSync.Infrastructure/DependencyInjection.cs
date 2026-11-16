@@ -1,4 +1,9 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using Hangfire;
+using Hangfire.PostgreSql;
+
+using MassTransit;
+
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,8 +16,8 @@ using Refit;
 
 using WLVSSeatSync.Application.Abstractions;
 using WLVSSeatSync.Domain.Pricing;
-using WLVSSeatSync.Infrastructure.BackgroundJobs;
 using WLVSSeatSync.Infrastructure.Identity;
+using WLVSSeatSync.Infrastructure.Messaging;
 using WLVSSeatSync.Infrastructure.Payments;
 using WLVSSeatSync.Infrastructure.Persistence;
 
@@ -25,6 +30,7 @@ public static class DependencyInjection
         builder.AddNpgsqlDbContext<SeatSyncDbContext>("seatsyncdb");
         builder.Services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<SeatSyncDbContext>());
         builder.Services.AddSingleton(TimeProvider.System);
+        builder.Services.AddScoped<IUserDirectory, UserDirectory>();
 
         builder.Services
             .AddIdentityCore<ApplicationUser>(options =>
@@ -64,7 +70,16 @@ public static class DependencyInjection
                 pipeline.AddTimeout(TimeSpan.FromSeconds(2));     // each single attempt
             });
 
-        builder.Services.AddHostedService<ExpiredHoldsCleanupService>();
+        // Background jobs: Hangfire, storing its jobs in PostgreSQL (in its own "hangfire" schema).
+        builder.Services.AddHangfire(config => config
+            .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+            .UseSimpleAssemblyNameTypeSerializer()
+            .UseRecommendedSerializerSettings()
+            .UsePostgreSqlStorage(storage => storage.UseNpgsqlConnection(
+                builder.Configuration.GetConnectionString("seatsyncdb")
+                ?? throw new InvalidOperationException("Connection string 'seatsyncdb' is missing."))));
+
+        builder.Services.AddHangfireServer();
 
         // Pricing strategies. PriceCalculator receives all three as IEnumerable<IPricingRule>.
         builder.Services.AddSingleton<IPricingRule, EarlyBirdRule>();
@@ -84,6 +99,25 @@ public static class DependencyInjection
                 LocalCacheExpiration = TimeSpan.FromSeconds(10), // how long each API's memory keeps it
             };
         });
+
+        // Messaging: MassTransit over RabbitMQ, with a transactional outbox in PostgreSQL.
+        builder.Services.AddMassTransit(bus =>
+        {
+            bus.AddEntityFrameworkOutbox<SeatSyncDbContext>(outbox =>
+            {
+                outbox.UsePostgres();   // PostgreSQL-specific locking, so several API instances share one outbox safely
+                outbox.UseBusOutbox();  // Publish() writes to the outbox table instead of sending straight away
+            });
+
+            bus.UsingRabbitMq((context, rabbit) =>
+            {
+                rabbit.Host(new Uri(builder.Configuration.GetConnectionString("messaging")
+                    ?? throw new InvalidOperationException("Connection string 'messaging' is missing.")));
+                rabbit.ConfigureEndpoints(context);
+            });
+        });
+
+        builder.Services.AddScoped<IEventPublisher, MassTransitEventPublisher>();
 
         return builder;
     }

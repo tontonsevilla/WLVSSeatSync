@@ -1,10 +1,11 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using MassTransit;
+
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 using WLVSSeatSync.Application.Abstractions;
 using WLVSSeatSync.Domain.Abstractions;
-using WLVSSeatSync.Domain.Events;
 using WLVSSeatSync.Domain.Orders;
 using WLVSSeatSync.Domain.Tickets;
 using WLVSSeatSync.Domain.Venues;
@@ -16,7 +17,7 @@ namespace WLVSSeatSync.Infrastructure.Persistence
     : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>(options), IApplicationDbContext
     {
         public DbSet<Venue> Venues => Set<Venue>();
-        public DbSet<Event> Events => Set<Event>();
+        public DbSet<Domain.Events.Event> Events => Set<Domain.Events.Event>();
         public DbSet<Order> Orders => Set<Order>();
         public DbSet<Ticket> Tickets => Set<Ticket>();
 
@@ -34,6 +35,11 @@ namespace WLVSSeatSync.Infrastructure.Persistence
             {
                 modelBuilder.Entity(entityType.ClrType).Property(nameof(Entity.Id)).ValueGeneratedNever();
             }
+
+            // MassTransit's transactional outbox tables.
+            modelBuilder.AddInboxStateEntity();
+            modelBuilder.AddOutboxMessageEntity();
+            modelBuilder.AddOutboxStateEntity();
         }
     }
 }

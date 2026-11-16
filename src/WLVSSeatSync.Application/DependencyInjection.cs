@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 using WLVSSeatSync.Application.Behaviors;
 using WLVSSeatSync.Application.Common;
+using WLVSSeatSync.Application.Orders;
 
 namespace WLVSSeatSync.Application;
 
@@ -22,6 +23,7 @@ public static class DependencyInjection
         services.AddValidatorsFromAssembly(assembly, includeInternalTypes: true);
 
         services.AddScoped<SeatMapUpdates>();
+        services.AddScoped<OrderPaidMessageFactory>();
 
         return services;
     }

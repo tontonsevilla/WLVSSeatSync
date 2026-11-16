@@ -3,6 +3,21 @@
 Event ticketing platform built with .NET 10: live seat maps, QR tickets,
 gate scanning, and AI-assisted event pages.
 
+## Run locally
+Requirements: .NET 10 SDK, Docker Desktop.
+
+    dotnet run --project src/SeatSync.AppHost
+
+### Try it
+Use this password for all below users `Passw0rd!`.
+
+|Name|Username|Role|
+|----|--------|--------|
+|Ana Admin|admin@seatsync.dev|Admin|
+|Oscar Organizer|organizer@seatsync.dev|Organizer|
+|Sam Staff|staff@seatsync.dev|Staff|
+|Andrea Attendee|attendee@seatsync.dev|Attendee|
+
 ## Status
 Phase 0 complete: solution structure and local orchestration with Aspire.
 
@@ -17,17 +32,6 @@ Phase 3 complete: seat holds, payments with retries and compensation, pricing ru
 Phase 4 complete: public website with live seat map, checkout, caching and Google sign-in.
 > **Note:** Google sign-in is optional.
 
-### Try it
-Use this password for all below users `Passw0rd!`.
+Phase 5 complete: emailed QR-code PDF tickets via RabbitMQ with a transactional outbox, Hangfire jobs, YARP gateway.
 
-|Name|Username|Role|
-|----|--------|--------|
-|Ana Admin|admin@seatsync.dev|Admin|
-|Oscar Organizer|organizer@seatsync.dev|Organizer|
-|Sam Staff|staff@seatsync.dev|Staff|
-|Andrea Attendee|attendee@seatsync.dev|Attendee|
-
-## Run locally
-Requirements: .NET 10 SDK, Docker Desktop.
-
-    dotnet run --project src/SeatSync.AppHost
+![Screenshot](./documentation/images/pdf_ticket_screenshot.png)

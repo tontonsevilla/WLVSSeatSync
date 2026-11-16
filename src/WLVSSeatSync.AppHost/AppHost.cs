@@ -9,7 +9,8 @@ var seatsyncDb = postgres.AddDatabase("seatsyncdb");
 var redis = builder.AddRedis("redis");
 
 var rabbitmq = builder.AddRabbitMQ("messaging")
-    .WithManagementPlugin();   // RabbitMQ web UI
+    .WithManagementPlugin()   // RabbitMQ web UI
+    .WithDataVolume();          // keep data when you stop the app
 
 // Your services
 var payments = builder.AddProject<Projects.WLVSSeatSync_FakePayments>("payments")
@@ -21,16 +22,31 @@ var api = builder.AddProject<Projects.WLVSSeatSync_Api>("api")
     .WithReference(rabbitmq).WaitFor(rabbitmq)
     .WithReference(payments).WaitFor(payments);
 
-builder.AddProject<Projects.WLVSSeatSync_Notifications>("notifications")
-    .WithReference(rabbitmq).WaitFor(rabbitmq);
+// A fake SMTP server with a web inbox: catches every email, delivers none.
+var mailpit = builder.AddContainer("mailpit", "axllent/mailpit")
+    .WithHttpEndpoint(targetPort: 8025, name: "inbox")
+    .WithEndpoint(targetPort: 1025, name: "smtp");
+var smtp = mailpit.GetEndpoint("smtp");
 
-builder.AddProject<Projects.WLVSSeatSync_Gateway>("gateway")
-    .WithReference(api)
-    .WithExternalHttpEndpoints();
+builder.AddProject<Projects.WLVSSeatSync_Notifications>("notifications")
+    .WithReference(rabbitmq).WaitFor(rabbitmq)
+    .WaitFor(mailpit)
+    .WithEnvironment(context =>
+    {
+        // Aspire picks the real host and port at startup and passes them in.
+        context.EnvironmentVariables["Smtp__Host"] = smtp.Property(EndpointProperty.Host);
+        context.EnvironmentVariables["Smtp__Port"] = smtp.Property(EndpointProperty.Port);
+    });
 
 var web = builder.AddProject<Projects.WLVSSeatSync_Web>("web")
-    .WithReference(api)
+    .WithReference(api).WaitFor(api)
     .WithReference(redis).WaitFor(redis)
+    .WithEnvironment("SeatMap__HubUrl", "/hubs/seat-map")   // new: the browser reaches the hub through the gateway
+    .WithExternalHttpEndpoints();
+
+builder.AddProject<Projects.WLVSSeatSync_Gateway>("gateway")
+    .WithReference(api).WaitFor(api)
+    .WithReference(web).WaitFor(web)
     .WithExternalHttpEndpoints();
 
 // The browser opens a SignalR connection to the API, so the API must allow the website's origin.

@@ -8,10 +8,15 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="MailKit" />
+    <PackageReference Include="MassTransit.RabbitMQ" />
     <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="QRCoder" />
+    <PackageReference Include="QuestPDF" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\WLVSSeatSync.ServiceDefaults\WLVSSeatSync.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\WLVSSeatSync.Contracts\WLVSSeatSync.Contracts.csproj" />
   </ItemGroup>
 </Project>

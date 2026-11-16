@@ -51,7 +51,15 @@ public sealed class DetailsModel(ISeatSyncApi api, IConfiguration configuration)
 
         // Aspire tells this app the API's address. The browser connects to the hub there directly.
         var apiUrl = configuration["services:api:https:0"] ?? configuration["services:api:http:0"] ?? "";
-        HubUrl = $"{apiUrl.TrimEnd('/')}/hubs/seat-map";
+
+        // v1
+        // HubUrl = $"{apiUrl.TrimEnd('/')}/hubs/seat-map";
+
+        // v2
+        HubUrl = configuration["SeatMap:HubUrl"] ?? $"{apiUrl.TrimEnd('/')}/hubs/seat-map";
+
+        Console.WriteLine($"HubUrl: {HubUrl}");
+
         return true;
     }
 }
