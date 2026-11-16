@@ -18,5 +18,6 @@
     <Project Path="tests/WLVSSeatSync.Api.IntegrationTests/WLVSSeatSync.Api.IntegrationTests.csproj" />
     <Project Path="tests/WLVSSeatSync.Application.Tests/WLVSSeatSync.Application.Tests.csproj" />
     <Project Path="tests/WLVSSeatSync.Domain.Tests/WLVSSeatSync.Domain.Tests.csproj" />
+	<Project Path="tests/WLVSSeatSync.Notifications.Tests/WLVSSeatSync.Notications.Tests.csproj" />
   </Folder>
 </Solution>
