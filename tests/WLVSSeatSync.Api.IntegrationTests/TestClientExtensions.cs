@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using WLVSSeatSync.Api.Auth;
 using WLVSSeatSync.Application.Common;
 using WLVSSeatSync.Application.Events;
+using WLVSSeatSync.Application.Orders;
 using WLVSSeatSync.Infrastructure;
 
 namespace WLVSSeatSync.Api.IntegrationTests;
@@ -32,6 +33,16 @@ internal static class TestClientExtensions
         login.EnsureSuccessStatusCode();
         var token = await login.Content.ReadFromJsonAsync<TokenResponse>();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token!.AccessToken);
+    }
+
+    public static async Task BuyAsync(this HttpClient client, Guid eventId, IReadOnlyList<Guid> seatIds)
+    {
+        var place = await client.PostAsJsonAsync("/orders", new { eventId, eventSeatIds = seatIds });
+        place.EnsureSuccessStatusCode();
+        var order = await place.Content.ReadFromJsonAsync<PlacedOrder>();
+
+        var pay = await client.PostAsJsonAsync($"/orders/{order!.OrderId}/pay", new { cardToken = "tok_visa" });
+        pay.EnsureSuccessStatusCode();
     }
 
     // Earlier tests buy seats too, so always look for seats that are free right now.

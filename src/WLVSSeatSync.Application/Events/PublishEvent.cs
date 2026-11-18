@@ -12,7 +12,7 @@ using WLVSSeatSync.Domain.Events;
 
 namespace WLVSSeatSync.Application.Events;
 
-public sealed record PublishEventCommand(Guid EventId) : IRequest<Result>;
+public sealed record PublishEventCommand(Guid EventId) : IRequest<Result>, IAuditable;
 
 internal sealed class PublishEventCommandValidator : AbstractValidator<PublishEventCommand>
 {

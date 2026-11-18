@@ -15,7 +15,11 @@ using Polly;
 using Refit;
 
 using WLVSSeatSync.Application.Abstractions;
+using WLVSSeatSync.Application.Analytics;
+using WLVSSeatSync.Application.Reviews;
 using WLVSSeatSync.Domain.Pricing;
+using WLVSSeatSync.Infrastructure.Analytics;
+using WLVSSeatSync.Infrastructure.Documents;
 using WLVSSeatSync.Infrastructure.Identity;
 using WLVSSeatSync.Infrastructure.Messaging;
 using WLVSSeatSync.Infrastructure.Payments;
@@ -31,6 +35,7 @@ public static class DependencyInjection
         builder.Services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<SeatSyncDbContext>());
         builder.Services.AddSingleton(TimeProvider.System);
         builder.Services.AddScoped<IUserDirectory, UserDirectory>();
+        builder.Services.AddScoped<ISalesAnalytics, DapperSalesAnalytics>();
 
         builder.Services
             .AddIdentityCore<ApplicationUser>(options =>
@@ -103,6 +108,9 @@ public static class DependencyInjection
         // Messaging: MassTransit over RabbitMQ, with a transactional outbox in PostgreSQL.
         builder.Services.AddMassTransit(bus =>
         {
+            bus.SetKebabCaseEndpointNameFormatter(); // queue names like "live-sales", matching Notifications
+            bus.AddConsumer<LiveSalesConsumer>();
+
             bus.AddEntityFrameworkOutbox<SeatSyncDbContext>(outbox =>
             {
                 outbox.UsePostgres();   // PostgreSQL-specific locking, so several API instances share one outbox safely
@@ -118,6 +126,12 @@ public static class DependencyInjection
         });
 
         builder.Services.AddScoped<IEventPublisher, MassTransitEventPublisher>();
+
+        // Documents: reviews and the audit log, in MongoDB.
+        builder.AddMongoDBClient("docsdb");
+        builder.Services.AddScoped<IReviewStore, MongoReviewStore>();
+        builder.Services.AddScoped<IAuditLog, MongoAuditLog>();
+        builder.Services.AddHostedService<MongoIndexSetup>();
 
         return builder;
     }

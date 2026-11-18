@@ -18,7 +18,7 @@ public sealed record CreateEventCommand(
     string Description,
     DateTimeOffset StartsAt,
     DateTimeOffset EndsAt,
-    IReadOnlyList<CreateTicketTier> Tiers) : IRequest<Result<Guid>>;
+    IReadOnlyList<CreateTicketTier> Tiers) : IRequest<Result<Guid>>, IAuditable;
 
 // One ticket tier, sold for every seat in one venue section.
 public sealed record CreateTicketTier(string Name, string Section, decimal Price);

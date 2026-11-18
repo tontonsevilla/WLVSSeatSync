@@ -1,0 +1,20 @@
+.venue-row {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin-bottom: 2px;
+}
+
+.venue-row-label {
+    width: 1.5rem;
+    font-size: 0.75rem;
+    color: #6c757d;
+}
+
+.venue-seat {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    background: #0d6efd;
+    opacity: 0.75;
+}

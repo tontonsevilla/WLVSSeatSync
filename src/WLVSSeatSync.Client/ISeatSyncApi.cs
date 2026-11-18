@@ -43,4 +43,42 @@ public interface ISeatSyncApi
 
     [Delete("/orders/{id}")] 
     Task<IApiResponse> CancelOrderAsync(Guid id, CancellationToken cancellationToken = default);
+
+    // ----- Venues -----
+    [Get("/venues")]
+    Task<IReadOnlyList<VenueSummary>> GetVenuesAsync(CancellationToken cancellationToken = default);
+
+    [Get("/venues/{id}")]
+    Task<VenueDetails> GetVenueAsync(Guid id, CancellationToken cancellationToken = default);
+
+    [Post("/venues")]
+    Task<IApiResponse<CreatedResponse>> CreateVenueAsync([Body] CreateVenueRequest request,
+        CancellationToken cancellationToken = default);
+
+    // ----- Organizer -----
+    [Post("/events")]
+    Task<IApiResponse<CreatedResponse>> CreateEventAsync([Body] CreateEventRequest request,
+        CancellationToken cancellationToken = default);
+
+    [Post("/events/{id}/publish")]
+    Task<IApiResponse> PublishEventAsync(Guid id, CancellationToken cancellationToken = default);
+
+    [Get("/manage/events")]
+    Task<IReadOnlyList<ManagedEvent>> GetManagedEventsAsync(CancellationToken cancellationToken = default);
+
+    [Get("/manage/events/{id}/sales")]
+    Task<EventSalesReport> GetEventSalesAsync(Guid id, CancellationToken cancellationToken = default);
+
+    // ----- Reviews -----
+    [Get("/events/{id}/reviews")]
+    Task<EventReviews> GetReviewsAsync(Guid id, CancellationToken cancellationToken = default);
+
+    [Post("/events/{id}/reviews")]
+    Task<IApiResponse> AddReviewAsync(Guid id, [Body] AddReviewRequest request,
+        CancellationToken cancellationToken = default);
+
+    // ----- Admin -----
+    [Get("/admin/audit")]
+    Task<IReadOnlyList<AuditEntry>> GetAuditLogAsync(string? action, int take,
+        CancellationToken cancellationToken = default);
 }

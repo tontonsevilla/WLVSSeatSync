@@ -1,0 +1,152 @@
+﻿@page "/events/new"
+@attribute [Authorize(Policy = DashboardPolicies.ManageEvents)]
+@using System.ComponentModel.DataAnnotations
+@inject ISeatSyncApi Api
+@inject NavigationManager Navigation
+
+<PageTitle>New event · SeatSync dashboard</PageTitle>
+
+<h1>New event</h1>
+
+@if (_venues is null)
+{
+    <p>Loading venues…</p>
+}
+else
+{
+    <EditForm Model="Model" OnValidSubmit="CreateAsync" FormName="new-event">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="row g-3" style="max-width: 48rem">
+            <div class="col-12">
+                <label class="form-label" for="title">Title</label>
+                <InputText id="title" class="form-control" @bind-Value="Model.Title" />
+            </div>
+            <div class="col-12">
+                <label class="form-label" for="description">Description</label>
+                <InputTextArea id="description" class="form-control" rows="4" @bind-Value="Model.Description" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label" for="starts">Starts (Philippine time)</label>
+                <InputDate id="starts" Type="InputDateType.DateTimeLocal" class="form-control" @bind-Value="Model.StartsAt" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label" for="ends">Ends (Philippine time)</label>
+                <InputDate id="ends" Type="InputDateType.DateTimeLocal" class="form-control" @bind-Value="Model.EndsAt" />
+            </div>
+            <div class="col-12">
+                <label class="form-label" for="venue">Venue</label>
+                <InputSelect id="venue" class="form-select" @bind-Value="Model.VenueId" @bind-Value:after="LoadSectionsAsync">
+                    <option value="">Choose a venue…</option>
+                    @foreach (var venue in _venues)
+                    {
+                        <option value="@venue.Id">@venue.Name, @venue.City (@venue.SeatCount seats)</option>
+                    }
+                </InputSelect>
+            </div>
+        </div>
+
+        @if (Model.Tiers.Count > 0)
+        {
+            <h2 class="h5 mt-4">Prices</h2>
+            <p class="text-muted">One ticket tier per section of the venue.</p>
+            <table class="table" style="max-width: 48rem">
+                <thead><tr><th>Section</th><th>Tier name</th><th>Price (PHP)</th></tr></thead>
+                <tbody>
+                    @foreach (var tier in Model.Tiers)
+                    {
+                        <tr>
+                            <td class="align-middle">@tier.Section</td>
+                            <td><InputText class="form-control" @bind-Value="tier.Name" /></td>
+                            <td><InputNumber class="form-control" @bind-Value="tier.Price" min="1" step="50" /></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+
+        @if (_error is not null)
+        {
+            <div class="alert alert-danger" style="max-width: 48rem">@_error</div>
+        }
+
+        <button type="submit" class="btn btn-primary mt-3" disabled="@_saving">Create as draft</button>
+    </EditForm>
+}
+
+@code {
+    private static readonly TimeSpan PhilippineTime = TimeSpan.FromHours(8);
+
+    private IReadOnlyList<VenueSummary>? _venues;
+    private EventForm Model { get; } = new();
+    private string? _error;
+    private bool _saving;
+
+    protected override async Task OnInitializedAsync() => _venues = await Api.GetVenuesAsync();
+
+    private async Task LoadSectionsAsync()
+    {
+        Model.Tiers.Clear();
+        if (Model.VenueId is not { } venueId)
+            return;
+
+        var venue = await Api.GetVenueAsync(venueId);
+        Model.Tiers.AddRange(venue.Sections.Select(s => new TierForm { Section = s.Name, Name = s.Name, Price = 1000 }));
+    }
+
+    private async Task CreateAsync()
+    {
+        _error = null;
+
+        // DataAnnotationsValidator doesn't look inside lists, so check the tiers here.
+        if (Model.Tiers.Count == 0 || Model.Tiers.Any(t => string.IsNullOrWhiteSpace(t.Name) || t.Price <= 0))
+        {
+            _error = "Choose a venue, and give every section a tier name and a price.";
+            return;
+        }
+
+        var request = new CreateEventRequest(Model.VenueId!.Value, Model.Title, Model.Description,
+            InPhilippineTime(Model.StartsAt), InPhilippineTime(Model.EndsAt),
+            [.. Model.Tiers.Select(t => new CreateTicketTier(t.Name.Trim(), t.Section, t.Price))]);
+
+        _saving = true;
+        var response = await Api.CreateEventAsync(request);
+        _saving = false;
+
+        if (!response.IsSuccessful || response.Content is null)
+        {
+            _error = ApiErrors.Describe(response.Error as Refit.ApiException); // the API's own message, such as "must start in the future"
+            return;
+        }
+
+        Navigation.NavigateTo($"events/{response.Content.Id}");
+    }
+
+    // The browser's date picker has no time zone; the organizer means Philippine time.
+    private static DateTimeOffset InPhilippineTime(DateTime local) =>
+        new(DateTime.SpecifyKind(local, DateTimeKind.Unspecified), PhilippineTime);
+
+    private sealed class EventForm
+    {
+        [Required, MaxLength(200)] 
+        public string Title { get; set; } = string.Empty;
+
+        [MaxLength(4000)] 
+        public string Description { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Choose a venue.")] 
+        public Guid? VenueId { get; set; }
+
+        public DateTime StartsAt { get; set; } = DateTime.UtcNow.Add(PhilippineTime).Date.AddDays(30).AddHours(19);
+        public DateTime EndsAt { get; set; } = DateTime.UtcNow.Add(PhilippineTime).Date.AddDays(30).AddHours(22);
+        public List<TierForm> Tiers { get; } = [];
+    }
+
+    private sealed class TierForm
+    {
+        public string Section { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public decimal Price { get; set; }
+    }
+}

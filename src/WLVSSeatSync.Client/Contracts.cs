@@ -49,4 +49,42 @@
     // ----- Errors: the ProblemDetails the API returns -----
     public sealed record ApiProblem(string? Title, string? Detail, int? Status,
         IReadOnlyDictionary<string, string[]>? Errors);
+
+    // ----- Roles: the values of the token's "role" claim -----
+    public static class SeatSyncRoles
+    {
+        public const string Organizer = "Organizer";
+        public const string Admin = "Admin";
+    }
+
+    // ----- Venues -----
+    public sealed record VenueSummary(Guid Id, string Name, string City, int SeatCount);
+    public sealed record VenueDetails(Guid Id, string Name, string City, IReadOnlyList<VenueSection> Sections);
+    public sealed record VenueSection(string Name, int Rows, int Seats);
+
+    public sealed record CreateVenueSection(string Name, int Rows, int SeatsPerRow);
+    public sealed record CreateVenueRequest(string Name, string City, IReadOnlyList<CreateVenueSection> Sections);
+    public sealed record CreatedResponse(Guid Id);
+
+    // ----- Organizer and admin -----
+    public sealed record CreateTicketTier(string Name, string Section, decimal Price);
+    public sealed record CreateEventRequest(Guid VenueId, string Title, string Description,
+        DateTimeOffset StartsAt, DateTimeOffset EndsAt, IReadOnlyList<CreateTicketTier> Tiers);
+
+    public sealed record ManagedEvent(Guid Id, string Title, DateTimeOffset StartsAt, string Status,
+        string VenueName, int TotalSeats, int SeatsSold);
+
+    public sealed record TierSales(string TierName, string Currency, int TotalSeats, int SeatsSold, decimal Revenue);
+    public sealed record DailySales(DateTime Day, int Orders, int Tickets, decimal Revenue);
+    public sealed record EventSalesReport(Guid EventId, string Title,
+        IReadOnlyList<TierSales> Tiers, IReadOnlyList<DailySales> Days);
+
+    public sealed record LiveSale(Guid EventId, int Tickets, decimal Amount, string Currency, DateTimeOffset PaidAt);
+
+    public sealed record AuditEntry(DateTimeOffset At, string Action, string? UserEmail, Guid? EntityId, string Details);
+
+    // ----- Reviews -----
+    public sealed record AddReviewRequest(int Rating, string Comment);
+    public sealed record ReviewItem(string AuthorName, int Rating, string Comment, DateTimeOffset CreatedAt);
+    public sealed record EventReviews(double? AverageRating, int Count, IReadOnlyList<ReviewItem> Latest);
 }

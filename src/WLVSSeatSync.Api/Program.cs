@@ -39,6 +39,7 @@ builder.Services.AddSerilog((services, logger) => logger
 // ---------- Application and infrastructure ----------
 builder.AddInfrastructure();
 builder.Services.AddApplication();
+builder.Services.AddSingleton<ISalesNotifier, SignalRSalesNotifier>();
 
 // ---------- JSON and errors ----------
 builder.Services.ConfigureHttpJsonOptions(options =>
@@ -56,6 +57,9 @@ builder.Services.AddOptions<JwtOptions>()
     .ValidateOnStart();
 builder.Services.AddSingleton<TokenService>();
 
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
 builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
     .Configure<IOptions<JwtOptions>>((bearer, jwtOptions) =>
@@ -71,11 +75,23 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
             RoleClaimType = TokenService.RoleClaimType,
             ClockSkew = TimeSpan.FromSeconds(30),
         };
+
+        bearer.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var token = context.Request.Query["access_token"];
+                if (!string.IsNullOrEmpty(token) && context.HttpContext.Request.Path.StartsWithSegments("/hubs"))
+                    context.Token = token;
+                return Task.CompletedTask;
+            },
+        };
     });
 
 builder.Services.AddAuthorizationBuilder()
     .AddPolicy(Policies.ManageEvents, policy => policy.RequireRole(Roles.Organizer, Roles.Admin))
-    .AddPolicy(Policies.ManageVenues, policy => policy.RequireRole(Roles.Admin));
+    .AddPolicy(Policies.ManageVenues, policy => policy.RequireRole(Roles.Admin))
+    .AddPolicy(Policies.Administer, policy => policy.RequireRole(Roles.Admin));
 
 // ---------- Rate limiting ----------
 builder.Services.AddRateLimiter(options =>
@@ -138,7 +154,11 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
     app.MapScalarApiReference(options => options.WithTitle("WLVS SeatSync API"));
     await app.Services.MigrateAndSeedDatabaseAsync();
-    app.MapHangfireDashboard("/jobs"); // allows only requests from this machine by default
+    app.MapHangfireDashboard("/jobs", new DashboardOptions
+    {
+        Authorization = [],   // switch off Hangfire's own "this machine only" check...
+        DashboardTitle = "WLVSSeatSync jobs",
+    }).RequireAuthorization(Policies.Administer); // ...and use the API's JWT authorization instead
 }
 
 // ---------- Map dev created endpoints ----------
@@ -147,6 +167,9 @@ app.MapVenueEndpoints();
 app.MapEventEndpoints();
 app.MapOrderEndpoints();
 app.MapHub<SeatMapHub>("/hubs/seat-map");
+app.MapHub<SalesHub>("/hubs/sales");
+app.MapDashboardEndpoints();
+app.MapReviewEndpoints();
 
 app.Run();
 

@@ -9,7 +9,7 @@ using WLVSSeatSync.Domain.Venues;
 namespace WLVSSeatSync.Application.Venues;
 
 public sealed record CreateVenueCommand(string Name, string City, IReadOnlyList<CreateVenueSection> Sections)
-    : IRequest<Result<Guid>>;
+    : IRequest<Result<Guid>>, IAuditable;
 
 public sealed record CreateVenueSection(string Name, int Rows, int SeatsPerRow);
 

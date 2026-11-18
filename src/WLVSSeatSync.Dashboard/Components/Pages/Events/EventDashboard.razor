@@ -1,0 +1,233 @@
+﻿@page "/events/{Id:guid}"
+@attribute [Authorize(Policy = DashboardPolicies.ManageEvents)]
+@implements IAsyncDisposable
+@using System.Globalization
+@using Microsoft.AspNetCore.SignalR.Client
+@inject ISeatSyncApi Api
+@inject AccessTokenProvider Tokens
+@inject IConfiguration Configuration
+@inject ILogger<EventDashboard> Logger
+
+<PageTitle>@(_event?.Title ?? "Event") · SeatSync dashboard</PageTitle>
+
+@if (_notFound)
+{
+    <h1>Event not found</h1>
+}
+else if (_event is null || _sales is null)
+{
+    <p>Loading…</p>
+}
+else
+{
+    <div class="d-flex align-items-center gap-3">
+        <h1 class="mb-0">@_event.Title</h1>
+        <span class="badge @(_event.Status == "Published" ? "text-bg-success" : "text-bg-secondary")">@_event.Status</span>
+    </div>
+    <p class="text-muted">@Display.When(_event.StartsAt) · @_event.Venue.Name, @_event.Venue.City</p>
+
+    @if (_event.Status == "Draft")
+    {
+        <button class="btn btn-success mb-3" disabled="@_busy" @onclick="PublishAsync">Publish: put tickets on sale</button>
+    }
+    @if (_message is not null)
+    {
+        <div class="alert alert-info">@_message</div>
+    }
+    @if (_lastSale is not null)
+    {
+        <div class="alert alert-success">
+            Just now: @_lastSale.Tickets ticket(s) sold for @Display.Money(_lastSale.Currency, _lastSale.Amount)
+        </div>
+    }
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <div class="text-muted small">Tickets sold</div>
+                    <div class="fs-3">@_sales.Tiers.Sum(t => t.SeatsSold) <span class="fs-6 text-muted">of @_sales.Tiers.Sum(t => t.TotalSeats)</span></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <div class="text-muted small">Revenue</div>
+                    <div class="fs-3">@Display.Money(Currency, _sales.Tiers.Sum(t => t.Revenue))</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <div class="text-muted small">Rating</div>
+                    <div class="fs-3">@(_reviews?.AverageRating is { } avg ? avg.ToString("0.0") : "–") <span class="fs-6 text-muted">from @(_reviews?.Count ?? 0) reviews</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <h2 class="h5">Sales by tier</h2>
+    <table class="table align-middle">
+        <thead><tr><th>Tier</th><th>Sold</th><th style="width: 40%"></th><th class="text-end">Revenue</th></tr></thead>
+        <tbody>
+            @foreach (var tier in _sales.Tiers)
+            {
+                <tr>
+                    <td>@tier.TierName</td>
+                    <td>@tier.SeatsSold of @tier.TotalSeats</td>
+                    <td>
+                        <div class="progress" role="progressbar" aria-label="@tier.TierName sold"
+                             aria-valuenow="@Percent(tier.SeatsSold, tier.TotalSeats)" aria-valuemin="0" aria-valuemax="100">
+                            <div class="progress-bar" style="width: @Width(tier.SeatsSold, tier.TotalSeats)"></div>
+                        </div>
+                    </td>
+                    <td class="text-end">@Display.Money(tier.Currency, tier.Revenue)</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <h2 class="h5">Sales by day (Philippine time)</h2>
+    @if (_sales.Days.Count == 0)
+    {
+        <p class="text-muted">No sales yet.</p>
+    }
+    else
+    {
+        var best = _sales.Days.Max(d => d.Revenue);
+        <table class="table table-sm align-middle">
+            <tbody>
+                @foreach (var day in _sales.Days)
+                {
+                    <tr>
+                        <td style="width: 8rem">@day.Day.ToString("ddd, MMM d")</td>
+                        <td><div class="bg-primary rounded" style="height: 0.75rem; width: @Width(day.Revenue, best)"></div></td>
+                        <td class="text-end" style="width: 12rem">@Display.Money(Currency, day.Revenue) · @day.Tickets tickets</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    <h2 class="h5 mt-4">Latest reviews</h2>
+    @if (_reviews is not { Count: > 0 })
+    {
+        <p class="text-muted">No reviews yet.</p>
+    }
+    else
+    {
+        foreach (var review in _reviews.Latest)
+        {
+            <div class="border-bottom py-2">
+                <strong>@(new string('★', review.Rating))@(new string('☆', 5 - review.Rating))</strong>
+                <span class="text-muted">@review.AuthorName, @Display.When(review.CreatedAt)</span>
+                <div>@review.Comment</div>
+            </div>
+        }
+    }
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private EventDetails? _event;
+    private EventSalesReport? _sales;
+    private EventReviews? _reviews;
+    private LiveSale? _lastSale;
+    private string? _message;
+    private bool _notFound;
+    private bool _busy;
+    private HubConnection? _hub;
+
+    private string Currency => _sales?.Tiers.FirstOrDefault()?.Currency ?? "PHP";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var response = await Api.GetEventAsync(Id);
+        if (!response.IsSuccessful || response.Content is null)
+        {
+            _notFound = true;
+            return;
+        }
+
+        _event = response.Content;
+        await LoadNumbersAsync();
+    }
+
+    // Runs only once the circuit is live. While the page is being prerendered as plain HTML,
+    // there's no browser connection to update yet, so connecting then would be wasted.
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _notFound)
+            return;
+
+        var apiUrl = Configuration["services:api:https:0"] ?? Configuration["services:api:http:0"];
+        if (apiUrl is null)
+            return;
+
+        var hub = new HubConnectionBuilder()
+            .WithUrl($"{apiUrl.TrimEnd('/')}/hubs/sales", options => options.AccessTokenProvider = Tokens.GetAsync)
+            .WithAutomaticReconnect()
+            .Build();
+
+        // Called on a SignalR thread: InvokeAsync moves the work onto this component's render thread.
+        hub.On<LiveSale>("SaleMade", sale => InvokeAsync(async () =>
+        {
+            _lastSale = sale;
+            await LoadNumbersAsync();
+            StateHasChanged();
+        }));
+
+        // Group membership belongs to a connection, so a reconnected connection must ask again.
+        hub.Reconnected += _ => hub.InvokeAsync("WatchSales", Id);
+        _hub = hub;
+
+        try
+        {
+            await hub.StartAsync();
+            await hub.InvokeAsync("WatchSales", Id);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Live sales are unavailable for event {EventId}", Id);
+            _message = "Live updates are unavailable right now. Refresh the page to see new sales.";
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadNumbersAsync()
+    {
+        _sales = await Api.GetEventSalesAsync(Id);
+        _reviews = await Api.GetReviewsAsync(Id);
+    }
+
+    private async Task PublishAsync()
+    {
+        _busy = true;
+        var response = await Api.PublishEventAsync(Id);
+        _busy = false;
+
+        if (!response.IsSuccessful)
+        {
+            _message = ApiErrors.Describe(response.Error as Refit.ApiException);
+            return;
+        }
+
+        _event = (await Api.GetEventAsync(Id)).Content ?? _event;
+        _message = "Published. The event is now on the public website.";
+    }
+
+    private static int Percent(decimal part, decimal whole) => whole <= 0 ? 0 : (int)Math.Round(part * 100 / whole);
+
+    // Invariant culture, so a comma never sneaks in as a decimal point in the CSS.
+    private static string Width(decimal part, decimal whole) =>
+        Percent(part, whole).ToString(CultureInfo.InvariantCulture) + "%";
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hub is not null)
+            await _hub.DisposeAsync(); // leaving the page closes the API connection
+    }
+}

@@ -6,6 +6,9 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
+using MongoDB.Driver;
+
+using Testcontainers.MongoDb;
 using Testcontainers.PostgreSql;
 using Testcontainers.Redis;
 
@@ -21,15 +24,27 @@ namespace WLVSSeatSync.Api.IntegrationTests
 
         private readonly RedisContainer _redis = new RedisBuilder("redis:7.4-alpine").Build();
 
+        private readonly MongoDbContainer _mongo = new MongoDbBuilder("mongo:8.0").Build();
+
         public async Task InitializeAsync()
         {
             // Start both at once: each takes a few seconds, so this halves the wait.
-            await Task.WhenAll(_postgres.StartAsync(), _redis.StartAsync());
+            await Task.WhenAll(_postgres.StartAsync(), 
+                _redis.StartAsync(), 
+                _mongo.StartAsync());
+
+            // The connection string must name a database, so that AddMongoDBClient also registers IMongoDatabase.
+            var mongo = new MongoUrlBuilder(_mongo.GetConnectionString())
+            {
+                DatabaseName = "docsdb",
+                AuthenticationSource = "admin", // the container's user lives in the admin database
+            };
 
             // Environment variables are read by WebApplication.CreateBuilder before any of
             // Program.cs runs, so AddNpgsqlDbContext sees the test database straight away.
             Environment.SetEnvironmentVariable("ConnectionStrings__seatsyncdb", _postgres.GetConnectionString());
             Environment.SetEnvironmentVariable("ConnectionStrings__redis", _redis.GetConnectionString());
+            Environment.SetEnvironmentVariable("ConnectionStrings__docsdb", mongo.ToString());
             Environment.SetEnvironmentVariable("Jwt__SigningKey", TestSigningKey);
         }
 
@@ -50,7 +65,9 @@ namespace WLVSSeatSync.Api.IntegrationTests
         async Task IAsyncLifetime.DisposeAsync()
         {
             await DisposeAsync();            // stop the API first
-            await Task.WhenAll(_postgres.DisposeAsync().AsTask(), _redis.DisposeAsync().AsTask());  // then remove the container
+            await Task.WhenAll(_postgres.DisposeAsync().AsTask(), 
+                _redis.DisposeAsync().AsTask(), 
+                _mongo.DisposeAsync().AsTask());  // then remove the container
         }
     }
 }

@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/benchmarks/">
+    <Project Path="benchmarks/WLVSSeatSync.Benchmarks/WLVSSeatSync.Benchmarks.csproj" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/WLVSSeatSync.Api/WLVSSeatSync.Api.csproj" />
     <Project Path="src/WLVSSeatSync.AppHost/WLVSSeatSync.AppHost.csproj" />
@@ -17,7 +20,8 @@
   <Folder Name="/tests/">
     <Project Path="tests/WLVSSeatSync.Api.IntegrationTests/WLVSSeatSync.Api.IntegrationTests.csproj" />
     <Project Path="tests/WLVSSeatSync.Application.Tests/WLVSSeatSync.Application.Tests.csproj" />
+    <Project Path="tests/WLVSSeatSync.Dashboard.Tests/WLVSSeatSync.Dashboard.Tests.csproj" />
     <Project Path="tests/WLVSSeatSync.Domain.Tests/WLVSSeatSync.Domain.Tests.csproj" />
-	<Project Path="tests/WLVSSeatSync.Notifications.Tests/WLVSSeatSync.Notications.Tests.csproj" />
+    <Project Path="tests/WLVSSeatSync.Notifications.Tests/WLVSSeatSync.Notications.Tests.csproj" />
   </Folder>
 </Solution>

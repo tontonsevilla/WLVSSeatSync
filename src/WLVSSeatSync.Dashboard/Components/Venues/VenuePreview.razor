@@ -1,0 +1,38 @@
+﻿@* Draws each section as rows of seats, exactly as POST /venues will create them. *@
+
+<div class="venue-preview">
+    <p class="text-muted" data-testid="total">@TotalSeats seats in @Sections.Count sections</p>
+
+    @foreach (var section in Sections)
+    {
+        var rows = Math.Clamp(section.Rows, 0, MaxRows);
+        var seatsPerRow = Math.Clamp(section.SeatsPerRow, 0, MaxSeatsPerRow);
+
+        <div class="mb-3">
+            <h3 class="h6">@section.Name <small class="text-muted">(@(rows * seatsPerRow) seats)</small></h3>
+            @for (var row = 0; row < rows; row++)
+            {
+                <div class="venue-row">
+                    <span class="venue-row-label">@RowLabel(row)</span>
+                    @for (var seat = 1; seat <= seatsPerRow; seat++)
+                    {
+                        <span class="venue-seat" title="@section.Name, Row @RowLabel(row), Seat @seat"></span>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    public const int MaxRows = 26;          // rows are single letters, A to Z
+    public const int MaxSeatsPerRow = 100;
+
+    [Parameter, EditorRequired]
+    public IReadOnlyList<CreateVenueSection> Sections { get; set; } = [];
+
+    private int TotalSeats => Sections.Sum(s =>
+        Math.Clamp(s.Rows, 0, MaxRows) * Math.Clamp(s.SeatsPerRow, 0, MaxSeatsPerRow));
+
+    public static string RowLabel(int index) => ((char)('A' + index)).ToString();
+}

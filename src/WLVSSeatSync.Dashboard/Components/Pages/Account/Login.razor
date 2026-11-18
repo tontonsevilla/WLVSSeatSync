@@ -1,0 +1,84 @@
+﻿@page "/account/login"
+@attribute [AllowAnonymous]
+@attribute [ExcludeFromInteractiveRouting]
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+@inject ISeatSyncApi Api
+@inject NavigationManager Navigation
+
+<PageTitle>Log in · SeatSync dashboard</PageTitle>
+
+<h1>SeatSync dashboard</h1>
+<p class="text-muted">For organizers and admins. Buyers use the SeatSync website.</p>
+
+@if (_error is not null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+
+<EditForm Model="Input" method="post" OnValidSubmit="LogInAsync" FormName="login" style="max-width: 24rem">
+    <DataAnnotationsValidator />
+    <div class="mb-3">
+        <label class="form-label" for="email">Email</label>
+        <InputText id="email" class="form-control" autocomplete="username" @bind-Value="Input.Email" />
+        <ValidationMessage For="() => Input.Email" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label" for="password">Password</label>
+        <InputText id="password" type="password" class="form-control" autocomplete="current-password"
+                   @bind-Value="Input.Password" />
+        <ValidationMessage For="() => Input.Password" />
+    </div>
+    <button type="submit" class="btn btn-primary">Log in</button>
+    <p class="mt-3 small text-body-secondary">
+        Demo account (Password: <code style="font-size: 1em;">Passw0rd!</code>)<br />
+        admin@seatsync.dev<br />
+        organizer@seatsync.dev
+    </p>
+</EditForm>
+
+@code {
+    [CascadingParameter] 
+    private HttpContext HttpContext { get; set; } = default!;
+    
+    [SupplyParameterFromForm] 
+    private LoginInput Input { get; set; } = default!;
+    
+    [SupplyParameterFromQuery] 
+    private string? ReturnUrl { get; set; }
+
+    private string? _error;
+
+    protected override void OnInitialized() => Input ??= new();
+
+    private async Task LogInAsync()
+    {
+        var response = await Api.LoginAsync(new LoginRequest(Input.Email, Input.Password));
+        if (!response.IsSuccessful || response.Content is null)
+        {
+            _error = "Wrong email or password.";
+            return;
+        }
+
+        var (principal, properties) = DashboardSignIn.Create(response.Content);
+        if (!principal.IsInRole(SeatSyncRoles.Organizer) && !principal.IsInRole(SeatSyncRoles.Admin))
+        {
+            _error = "This dashboard is for organizers and admins.";
+            return;
+        }
+
+        await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, properties);
+        Navigation.NavigateTo(IsLocal(ReturnUrl) ? ReturnUrl! : "/");
+    }
+
+    // Redirect only within this site, never to an address someone put in the link (an open redirect).
+    private static bool IsLocal(string? url) =>
+        url is { Length: > 0 } && url[0] == '/' && (url.Length == 1 || (url[1] != '/' && url[1] != '\\'));
+
+    private sealed class LoginInput
+    {
+        [Required, EmailAddress] public string Email { get; set; } = string.Empty;
+        [Required] public string Password { get; set; } = string.Empty;
+    }
+}

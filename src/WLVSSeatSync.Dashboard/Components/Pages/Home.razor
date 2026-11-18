@@ -1,7 +1,49 @@
 ﻿@page "/"
+@attribute [Authorize(Policy = DashboardPolicies.ManageEvents)]
+@inject ISeatSyncApi Api
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Events · SeatSync dashboard</PageTitle>
 
-<h1>Hello, world!</h1>
+<h1>Events</h1>
 
-Welcome to your new app.
+@if (_events is null)
+{
+    <p>Loading…</p>
+}
+else
+{
+    <input class="form-control mb-3" style="max-width: 20rem" placeholder="Filter by title"
+           @bind="_filter" @bind:event="oninput" />
+
+    <QuickGrid Items="Filtered" Pagination="_pagination" class="table table-hover">
+        <TemplateColumn Title="Event" SortBy="_byTitle">
+            <a href="events/@context.Id">@context.Title</a>
+        </TemplateColumn>
+        <TemplateColumn Title="Starts" SortBy="_byStart" IsDefaultSortColumn="true"
+                        InitialSortDirection="SortDirection.Descending">
+            @Display.When(context.StartsAt)
+        </TemplateColumn>
+        <PropertyColumn Property="e => e.VenueName" Title="Venue" Sortable="true" />
+        <PropertyColumn Property="e => e.Status" Sortable="true" />
+        <TemplateColumn Title="Sold" SortBy="_bySold">
+            @context.SeatsSold of @context.TotalSeats
+        </TemplateColumn>
+    </QuickGrid>
+
+    <Paginator State="_pagination" />
+}
+
+@code {
+    private IReadOnlyList<ManagedEvent>? _events;
+    private string _filter = string.Empty;
+
+    private readonly PaginationState _pagination = new() { ItemsPerPage = 15 };
+    private readonly GridSort<ManagedEvent> _byTitle = GridSort<ManagedEvent>.ByAscending(e => e.Title);
+    private readonly GridSort<ManagedEvent> _byStart = GridSort<ManagedEvent>.ByAscending(e => e.StartsAt);
+    private readonly GridSort<ManagedEvent> _bySold = GridSort<ManagedEvent>.ByAscending(e => e.SeatsSold);
+
+    private IQueryable<ManagedEvent> Filtered => (_events ?? []).AsQueryable()
+        .Where(e => e.Title.Contains(_filter, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync() => _events = await Api.GetManagedEventsAsync();
+}

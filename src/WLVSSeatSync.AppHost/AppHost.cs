@@ -12,6 +12,11 @@ var rabbitmq = builder.AddRabbitMQ("messaging")
     .WithManagementPlugin()   // RabbitMQ web UI
     .WithDataVolume();          // keep data when you stop the app
 
+var mongo = builder.AddMongoDB("mongo")
+    .WithDataVolume()     // keep reviews when you stop the app
+    .WithMongoExpress();  // a web UI for browsing documents, like pgAdmin
+var docsDb = mongo.AddDatabase("docsdb");
+
 // Your services
 var payments = builder.AddProject<Projects.WLVSSeatSync_FakePayments>("payments")
     .WithEnvironment("FailureRate", "0.2");
@@ -21,6 +26,8 @@ var api = builder.AddProject<Projects.WLVSSeatSync_Api>("api")
     .WithReference(redis).WaitFor(redis)
     .WithReference(rabbitmq).WaitFor(rabbitmq)
     .WithReference(payments).WaitFor(payments);
+
+api.WithReference(docsDb).WaitFor(docsDb);
 
 // A fake SMTP server with a web inbox: catches every email, delivers none.
 var mailpit = builder.AddContainer("mailpit", "axllent/mailpit")
@@ -53,7 +60,7 @@ builder.AddProject<Projects.WLVSSeatSync_Gateway>("gateway")
 api.WithEnvironment("Cors__AllowedOrigins__0", web.GetEndpoint("https"));
 
 builder.AddProject<Projects.WLVSSeatSync_Dashboard>("dashboard")
-    .WithReference(api)
+    .WithReference(api).WaitFor(api)
     .WithExternalHttpEndpoints();
 
 builder.Build().Run();

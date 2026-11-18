@@ -1,0 +1,44 @@
+﻿@page "/audit"
+@attribute [Authorize(Policy = DashboardPolicies.Administer)]
+@inject ISeatSyncApi Api
+
+<PageTitle>Audit log · SeatSync dashboard</PageTitle>
+
+<h1>Audit log</h1>
+<p class="text-muted">Every venue created, and every event created or published, newest first. Stored in MongoDB.</p>
+
+<select class="form-select mb-3" style="max-width: 16rem" @bind="_action" @bind:after="LoadAsync">
+    <option value="">All actions</option>
+    <option>CreateVenue</option>
+    <option>CreateEvent</option>
+    <option>PublishEvent</option>
+</select>
+
+@if (_entries is null)
+{
+    <p>Loading…</p>
+}
+else
+{
+    <QuickGrid Items="_entries.AsQueryable()" class="table">
+        <TemplateColumn Title="When">@Display.When(context.At)</TemplateColumn>
+        <PropertyColumn Property="e => e.Action" />
+        <TemplateColumn Title="By">@(context.UserEmail ?? "system")</TemplateColumn>
+        <TemplateColumn Title="Details">
+            <details>
+                <summary>@(context.EntityId?.ToString() ?? "Show")</summary>
+                <pre class="small mb-0">@context.Details</pre>
+            </details>
+        </TemplateColumn>
+    </QuickGrid>
+}
+
+@code {
+    private IReadOnlyList<AuditEntry>? _entries;
+    private string _action = string.Empty;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync() =>
+        _entries = await Api.GetAuditLogAsync(string.IsNullOrEmpty(_action) ? null : _action, take: 100);
+}

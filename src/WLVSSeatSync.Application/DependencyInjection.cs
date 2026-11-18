@@ -18,6 +18,7 @@ public static class DependencyInjection
         {
             config.RegisterServicesFromAssembly(assembly);           // finds every handler
             config.AddOpenBehavior(typeof(ValidationBehavior<,>));   // wraps every handler
+            config.AddOpenBehavior(typeof(AuditBehavior<,>));
         });
 
         services.AddValidatorsFromAssembly(assembly, includeInternalTypes: true);

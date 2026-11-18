@@ -1,9 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <PackageReference Include="Aspire.MongoDB.Driver" />
     <PackageReference Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="Aspire.StackExchange.Redis.DistributedCaching" />
     <PackageReference Include="Bogus" />
+    <PackageReference Include="Dapper" />
     <PackageReference Include="Hangfire.AspNetCore" />
     <PackageReference Include="Hangfire.PostgreSql" />
     <PackageReference Include="MassTransit.EntityFrameworkCore" />
@@ -19,6 +21,10 @@
     <ProjectReference Include="..\WLVSSeatSync.Application\WLVSSeatSync.Application.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="WLVSSeatSync.Benchmarks" />
+  </ItemGroup>
+  
   <ItemGroup>
     <!-- Temporary exclude package vulnerabilities while waiting for the updates -->
     <!-- Replace with the exact advisory URL from your build warning -->

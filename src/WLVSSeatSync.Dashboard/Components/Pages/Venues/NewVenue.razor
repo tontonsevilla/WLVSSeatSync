@@ -1,0 +1,124 @@
+﻿@page "/venues/new"
+@attribute [Authorize(Policy = DashboardPolicies.Administer)]
+@using System.ComponentModel.DataAnnotations
+@using WLVSSeatSync.Dashboard.Components.Venues
+@inject ISeatSyncApi Api
+@inject NavigationManager Navigation
+
+<PageTitle>New venue · SeatSync dashboard</PageTitle>
+
+<h1>New venue</h1>
+
+<div class="row g-4">
+    <div class="col-lg-5">
+        <EditForm Model="Model" OnValidSubmit="SaveAsync">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <div class="mb-3">
+                <label class="form-label" for="name">Name</label>
+                <InputText id="name" class="form-control" @bind-Value="Model.Name" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="city">City</label>
+                <InputText id="city" class="form-control" @bind-Value="Model.City" />
+            </div>
+
+            <h2 class="h5 mt-4">Sections</h2>
+            @foreach (var section in Model.Sections)
+            {
+                <div class="row g-2 align-items-end mb-2">
+                    <div class="col-5">
+                        <label class="form-label small">Name</label>
+                        <InputText class="form-control" @bind-Value="section.Name" />
+                    </div>
+                    <div class="col-3">
+                        <label class="form-label small">Rows</label>
+                        <InputNumber class="form-control" min="1" max="@VenuePreview.MaxRows" @bind-Value="section.Rows" />
+                    </div>
+                    <div class="col-3">
+                        <label class="form-label small">Seats per row</label>
+                        <InputNumber class="form-control" min="1" max="@VenuePreview.MaxSeatsPerRow" @bind-Value="section.SeatsPerRow" />
+                    </div>
+                    <div class="col-1">
+                        <button type="button" class="btn btn-outline-danger btn-sm" title="Remove section"
+                                disabled="@(Model.Sections.Count == 1)" @onclick="() => Model.Sections.Remove(section)">✕</button>
+                    </div>
+                </div>
+            }
+            <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="AddSection">Add section</button>
+
+            @if (_error is not null)
+            {
+                <div class="alert alert-danger mt-3">@_error</div>
+            }
+
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary" disabled="@_saving">Save venue</button>
+            </div>
+        </EditForm>
+    </div>
+
+    <div class="col-lg-7">
+        <VenuePreview Sections="Preview" />
+    </div>
+</div>
+
+@code {
+    private VenueForm Model { get; } = new();
+    private string? _error;
+    private bool _saving;
+
+    // Rebuilt on every render, so the preview always matches the form.
+    private IReadOnlyList<CreateVenueSection> Preview =>
+        [.. Model.Sections.Select(s => new CreateVenueSection(s.Name.Trim(), s.Rows, s.SeatsPerRow))];
+
+    private void AddSection() =>
+        Model.Sections.Add(new SectionForm { Name = $"Section {Model.Sections.Count + 1}", Rows = 5, SeatsPerRow = 20 });
+
+    private async Task SaveAsync()
+    {
+        _error = Validate();
+        if (_error is not null)
+            return;
+
+        _saving = true;
+        var response = await Api.CreateVenueAsync(new CreateVenueRequest(Model.Name.Trim(), Model.City.Trim(), Preview));
+        _saving = false;
+
+        if (!response.IsSuccessful)
+        {
+            _error = ApiErrors.Describe(response.Error as Refit.ApiException);
+            return;
+        }
+
+        Navigation.NavigateTo("events/new"); // the natural next step: put an event in it
+    }
+
+    private string? Validate()
+    {
+        if (Model.Sections.Any(s => string.IsNullOrWhiteSpace(s.Name)))
+            return "Every section needs a name.";
+        if (Model.Sections.Select(s => s.Name.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).Count() != Model.Sections.Count)
+            return "Section names must be different.";
+        if (Model.Sections.Any(s => s.Rows is < 1 or > VenuePreview.MaxRows))
+            return $"A section can have 1 to {VenuePreview.MaxRows} rows.";
+        if (Model.Sections.Any(s => s.SeatsPerRow is < 1 or > VenuePreview.MaxSeatsPerRow))
+            return $"A row can have 1 to {VenuePreview.MaxSeatsPerRow} seats.";
+        return null;
+    }
+
+    private sealed class VenueForm
+    {
+        [Required, MaxLength(200)] public string Name { get; set; } = string.Empty;
+        [Required, MaxLength(100)] public string City { get; set; } = string.Empty;
+        public List<SectionForm> Sections { get; } = [new() { Name = "Floor", Rows = 10, SeatsPerRow = 20 }];
+    }
+
+    private sealed class SectionForm
+    {
+        public string Name { get; set; } = string.Empty;
+        public int Rows { get; set; }
+        public int SeatsPerRow { get; set; }
+    }
+}

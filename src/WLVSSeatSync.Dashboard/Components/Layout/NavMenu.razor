@@ -6,25 +6,27 @@
 
 <input type="checkbox" title="Navigation menu" class="navbar-toggler" />
 
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+<div class="nav-scrollable" onclick="document?.querySelector('.navbar-toggler')?.click()">
     <nav class="nav flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="weather">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
-            </NavLink>
-        </div>
+        <AuthorizeView Policy="@DashboardPolicies.ManageEvents">
+            <div class="nav-item px-3"><NavLink class="nav-link" href="" Match="NavLinkMatch.All">Events</NavLink></div>
+            <div class="nav-item px-3"><NavLink class="nav-link" href="events/new">New event</NavLink></div>
+        </AuthorizeView>
+        <AuthorizeView Policy="@DashboardPolicies.Administer">
+            <div class="nav-item px-3"><NavLink class="nav-link" href="venues/new">New venue</NavLink></div>
+            <div class="nav-item px-3"><NavLink class="nav-link" href="audit">Audit log</NavLink></div>
+            <div class="nav-item px-3"><a class="nav-link" href="jobs" target="_blank">Background jobs</a></div>
+        </AuthorizeView>
+        <AuthorizeView>
+            <Authorized>
+                <div class="nav-item px-3">
+                    <form action="account/logout" method="post">
+                        <AntiforgeryToken />
+                        <button type="submit" class="nav-link btn btn-link">Log out @context.User.Identity?.Name</button>
+                    </form>
+                </div>
+            </Authorized>
+        </AuthorizeView>
     </nav>
 </div>
 
